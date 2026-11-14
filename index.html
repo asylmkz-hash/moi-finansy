@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3d3e">
+<title>Мои финансы</title>
+<style>
+  :root {
+    --bg: #f4f6f5; --card: #ffffff; --ink: #14201f; --muted: #6b7a78;
+    --brand: #0f3d3e; --brand-2: #1c6b63; --line: #e2e8e6;
+    --ok: #1d7a4f; --warn: #a86a00; --bad: #b3261e;
+    --ok-bg: #e3f4ea; --warn-bg: #fdf1d8; --bad-bg: #fbe4e2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font: 16px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  #app { max-width: 640px; margin: 0 auto; min-height: 100%; padding: 16px 16px 96px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .center { text-align: center; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .hero { background: var(--brand); color: #fff; border-radius: 18px; padding: 28px 20px; margin-bottom: 16px; }
+  .hero .muted { color: #b9d3cf; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 12px 16px; background: var(--brand); color: #fff; font-weight: 600; }
+  button.block { width: 100%; margin-top: 12px; }
+  button.ghost { background: transparent; color: var(--brand); border: 1px solid var(--line); }
+  button.link { background: none; color: var(--brand-2); padding: 6px 0; font-weight: 500; }
+  button.small { padding: 7px 12px; font-size: 14px; }
+  button.danger { background: var(--bad); }
+  button:disabled { opacity: .55; cursor: default; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row .grow { flex: 1; min-width: 0; }
+  .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+  .badge.active { background: var(--ok-bg); color: var(--ok); }
+  .badge.pending { background: var(--warn-bg); color: var(--warn); }
+  .badge.blocked { background: var(--bad-bg); color: var(--bad); }
+  .badge.admin { background: var(--brand); color: #fff; }
+  .err { background: var(--bad-bg); color: var(--bad); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-top: 12px; }
+  .note { background: var(--ok-bg); color: var(--ok); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-top: 12px; }
+  .item { padding: 12px 0; border-top: 1px solid var(--line); }
+  .item:first-of-type { border-top: 0; }
+  .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; background: var(--bg); padding: 8px 10px; border-radius: 8px; word-break: break-all; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  nav .inner { max-width: 640px; margin: 0 auto; display: flex; }
+  nav button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 14px 4px; font-weight: 500; font-size: 14px; }
+  nav button.on { color: var(--brand); font-weight: 700; box-shadow: inset 0 3px 0 var(--brand); }
+  .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 16px 0 4px; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+</style>
+</head>
+<body>
+<div id="app"><p class="muted center" style="padding-top:40vh">Загрузка…</p></div>
+
+<script src="config.js"></script>
+<script type="module">
+const V = "10.12.2";
+const CDN = `https://www.gstatic.com/firebasejs/${V}/`;
+
+const CURRENCIES = [
+  ["KZT", "Тенге ₸"], ["USD", "Доллар США $"], ["EUR", "Евро €"], ["CNY", "Юань ¥"], ["RUB", "Рубль ₽"],
+  ["GBP", "Фунт £"], ["TRY", "Турецкая лира ₺"], ["AED", "Дирхам ОАЭ"], ["KGS", "Кыргызский сом"], ["UZS", "Узбекский сум"]
+];
+const STATUS = { active: "Активен", pending: "Ожидает", blocked: "Отключён" };
+const AUTH_ERRORS = {
+  "auth/invalid-credential": "Неверный email или пароль.",
+  "auth/invalid-email": "Проверьте адрес email.",
+  "auth/user-not-found": "Пользователь не найден.",
+  "auth/wrong-password": "Неверный пароль.",
+  "auth/email-already-in-use": "Этот email уже зарегистрирован. Войдите.",
+  "auth/weak-password": "Пароль слишком простой: минимум 6 символов.",
+  "auth/popup-closed-by-user": "Окно входа закрыто.",
+  "auth/popup-blocked": "Браузер заблокировал окно входа. Разрешите всплывающие окна.",
+  "auth/network-request-failed": "Нет соединения с интернетом.",
+  "auth/too-many-requests": "Слишком много попыток. Попробуйте позже.",
+  "auth/unauthorized-domain": "Этот адрес сайта не добавлен в Firebase (Authorized domains)."
+};
+
+const root = document.getElementById("app");
+function h(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "value") e.value = v;
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) {
+    if (c == null || c === false) continue;
+    e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return e;
+}
+function show(...nodes) { root.replaceChildren(...nodes.flat().filter(Boolean)); }
+function errText(e) { return AUTH_ERRORS[e && e.code] || (e && e.message) || "Что-то пошло не так."; }
+function fmtDate(ts) {
+  if (!ts || !ts.toDate) return "";
+  return ts.toDate().toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+const cfg = window.FIREBASE_CONFIG;
+if (!cfg || !cfg.apiKey || cfg.apiKey.includes("ВСТАВЬТЕ")) {
+  show(h("div", { class: "hero" }, h("h1", {}, "Мои финансы"), h("p", { class: "muted" }, "Приложение ещё не подключено к базе.")),
+       h("div", { class: "card" }, h("p", {}, "Вставьте настройки Firebase в файл config.js и обновите страницу.")));
+} else {
+  start().catch((e) => show(h("div", { class: "card" }, h("h2", {}, "Не удалось запустить приложение"), h("p", { class: "muted" }, errText(e)))));
+}
+
+async function start() {
+  const [{ initializeApp }, A, F] = await Promise.all([
+    import(CDN + "firebase-app.js"), import(CDN + "firebase-auth.js"), import(CDN + "firebase-firestore.js")
+  ]);
+  const app = initializeApp(cfg);
+  const auth = A.getAuth(app);
+  let db;
+  try {
+    db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
+  } catch (e) {
+    db = F.getFirestore(app);
+  }
+
+  const S = { user: null, profile: null, isAdmin: false, tab: "home", users: [], audit: [], msg: null, armed: null };
+  let unsubs = [];
+  const stopAll = () => { unsubs.forEach((u) => u()); unsubs = []; };
+
+  A.onAuthStateChanged(auth, async (user) => {
+    stopAll();
+    Object.assign(S, { user, profile: null, isAdmin: false, tab: "home", users: [], audit: [], msg: null });
+    if (!user) return renderLogin();
+    if (!user.emailVerified) return renderVerify();
+    try { await enter(); } catch (e) { renderFatal(e); }
+  });
+
+  async function enter() {
+    const u = S.user;
+    const adminSnap = await F.getDoc(F.doc(db, "admins", u.uid));
+    S.isAdmin = adminSnap.exists();
+
+    const ref = F.doc(db, "users", u.uid);
+    const snap = await F.getDoc(ref);
+    if (!snap.exists()) {
+      await u.getIdToken(true); // чтобы в токене был признак подтверждённого email
+      await F.setDoc(ref, {
+        name: u.displayName || (u.email || "").split("@")[0],
+        email: u.email, status: "pending", baseCurrency: "KZT", createdAt: F.serverTimestamp()
+      });
+    }
+    unsubs.push(F.onSnapshot(ref, (d) => { S.profile = d.data() || null; render(); }, renderFatal));
+
+    if (S.isAdmin) {
+      unsubs.push(F.onSnapshot(F.query(F.collection(db, "users"), F.orderBy("createdAt", "desc")), (q) => {
+        S.users = q.docs.map((d) => ({ id: d.id, ...d.data() })); render();
+      }, renderFatal));
+      unsubs.push(F.onSnapshot(F.query(F.collection(db, "audit"), F.orderBy("at", "desc"), F.limit(50)), (q) => {
+        S.audit = q.docs.map((d) => ({ id: d.id, ...d.data() })); render();
+      }, renderFatal));
+    }
+  }
+
+  // ---------- экраны до входа ----------
+  function renderLogin(mode = "login", message = null) {
+    const email = h("input", { type: "email", autocomplete: "email", placeholder: "you@example.com" });
+    const pass = h("input", { type: "password", autocomplete: mode === "login" ? "current-password" : "new-password", placeholder: "Минимум 6 символов" });
+    const name = h("input", { type: "text", autocomplete: "name", placeholder: "Как к вам обращаться" });
+    const box = h("div", {});
+    const say = (cls, t) => box.replaceChildren(h("div", { class: cls }, t));
+    if (message) say(message.cls, message.text);
+
+    async function submit(ev) {
+      ev.preventDefault();
+      const btn = ev.submitter; if (btn) btn.disabled = true;
+      try {
+        if (mode === "login") {
+          await A.signInWithEmailAndPassword(auth, email.value.trim(), pass.value);
+        } else {
+          const cred = await A.createUserWithEmailAndPassword(auth, email.value.trim(), pass.value);
+          if (name.value.trim()) await A.updateProfile(cred.user, { displayName: name.value.trim() });
+          await A.sendEmailVerification(cred.user);
+          renderVerify();
+        }
+      } catch (e) { say("err", errText(e)); if (btn) btn.disabled = false; }
+    }
+    async function google() {
+      try { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); } catch (e) { say("err", errText(e)); }
+    }
+    async function reset() {
+      if (!email.value.trim()) return say("err", "Введите email, и мы отправим ссылку для сброса пароля.");
+      try { await A.sendPasswordResetEmail(auth, email.value.trim()); say("note", "Ссылка для сброса пароля отправлена на почту."); }
+      catch (e) { say("err", errText(e)); }
+    }
+
+    show(
+      h("div", { class: "hero" }, h("h1", {}, "Мои финансы"), h("p", { class: "muted" }, "Активы, обязательства и бюджет в одном месте")),
+      h("div", { class: "card" },
+        h("button", { class: "ghost block", style: "margin-top:0", onclick: google }, "Войти через Google"),
+        h("div", { class: "divider" }, "или по email"),
+        h("form", { onsubmit: submit },
+          mode === "register" && [h("label", {}, "Имя"), name],
+          h("label", {}, "Email"), email,
+          h("label", {}, "Пароль"), pass,
+          h("button", { class: "block", type: "submit" }, mode === "login" ? "Войти" : "Зарегистрироваться")),
+        box,
+        h("div", { class: "row", style: "justify-content:space-between;margin-top:8px" },
+          h("button", { class: "link", onclick: () => renderLogin(mode === "login" ? "register" : "login") }, mode === "login" ? "Создать аккаунт" : "У меня уже есть аккаунт"),
+          mode === "login" && h("button", { class: "link", onclick: reset }, "Забыли пароль?")))
+    );
+  }
+
+  function renderVerify() {
+    const box = h("div", {});
+    const say = (cls, t) => box.replaceChildren(h("div", { class: cls }, t));
+    async function check() {
+      try {
+        await auth.currentUser.reload();
+        if (!auth.currentUser.emailVerified) return say("err", "Email ещё не подтверждён. Откройте письмо и нажмите на ссылку.");
+        await auth.currentUser.getIdToken(true);
+        S.user = auth.currentUser;
+        await enter();
+      } catch (e) { say("err", errText(e)); }
+    }
+    async function resend() {
+      try { await A.sendEmailVerification(auth.currentUser); say("note", "Письмо отправлено ещё раз."); } catch (e) { say("err", errText(e)); }
+    }
+    show(
+      h("div", { class: "hero" }, h("h1", {}, "Подтвердите email"), h("p", { class: "muted" }, auth.currentUser ? auth.currentUser.email : "")),
+      h("div", { class: "card" },
+        h("p", {}, "Мы отправили письмо со ссылкой. Откройте его, нажмите на ссылку и вернитесь сюда."),
+        h("button", { class: "block", onclick: check }, "Я подтвердил"),
+        h("button", { class: "ghost block", onclick: resend }, "Отправить письмо ещё раз"),
+        box,
+        h("button", { class: "link", style: "margin-top:8px", onclick: () => A.signOut(auth) }, "Выйти"))
+    );
+  }
+
+  function renderFatal(e) {
+    show(h("div", { class: "card" }, h("h2", {}, "Ошибка"), h("p", { class: "muted" }, errText(e)),
+      h("button", { class: "ghost", onclick: () => location.reload() }, "Обновить страницу"),
+      h("button", { class: "link", style: "margin-left:12px", onclick: () => A.signOut(auth) }, "Выйти")));
+  }
+
+  function uidBlock() {
+    const btn = h("button", { class: "ghost small", onclick: async () => {
+      try { await navigator.clipboard.writeText(S.user.uid); btn.textContent = "Скопировано"; } catch (e) { btn.textContent = "Скопируйте вручную"; }
+    } }, "Копировать");
+    return h("div", {}, h("label", {}, "Ваш код пользователя"), h("div", { class: "row" }, h("div", { class: "code grow" }, S.user.uid), btn));
+  }
+
+  // ---------- экраны после входа ----------
+  function render() {
+    if (!S.user || !S.profile) return;
+    const p = S.profile;
+    if (!S.isAdmin && p.status !== "active") {
+      const blocked = p.status === "blocked";
+      return show(
+        h("div", { class: "hero" }, h("h1", {}, blocked ? "Доступ отключён" : "Ждём подтверждения"), h("p", { class: "muted" }, p.email)),
+        h("div", { class: "card" },
+          h("p", {}, blocked ? "Администратор отключил ваш доступ. Свяжитесь с ним." : "Ваша заявка отправлена. Как только администратор её одобрит, приложение откроется само."),
+          uidBlock(),
+          h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")));
+    }
+    const tabs = [["home", "Главная"], S.isAdmin && ["users", "Пользователи"], ["profile", "Профиль"]].filter(Boolean);
+    const body = S.tab === "users" && S.isAdmin ? viewUsers() : S.tab === "profile" ? viewProfile() : viewHome();
+    show(body, h("nav", {}, h("div", { class: "inner" },
+      tabs.map(([id, title]) => h("button", { class: S.tab === id ? "on" : "", onclick: () => { S.tab = id; S.msg = null; S.armed = null; render(); } }, title)))));
+  }
+
+  function viewHome() {
+    const p = S.profile;
+    const waiting = S.users.filter((u) => u.status === "pending" && u.id !== S.user.uid).length;
+    return [
+      h("div", { class: "hero" },
+        h("p", { class: "muted" }, "Здравствуйте,"),
+        h("h1", {}, p.name || "пользователь"),
+        S.isAdmin && h("span", { class: "badge admin", style: "background:#fff;color:var(--brand);margin-top:8px" }, "Главный")),
+      S.isAdmin && waiting > 0 && h("div", { class: "card" },
+        h("div", { class: "row" }, h("div", { class: "grow" }, `Ожидают одобрения: ${waiting}`),
+          h("button", { class: "small", onclick: () => { S.tab = "users"; render(); } }, "Открыть"))),
+      h("div", { class: "card" },
+        h("h2", {}, "Вход и доступ настроены"),
+        h("p", { class: "muted" }, "Следующим шагом здесь появятся счета, активы, обязательства и чистый капитал."))
+    ];
+  }
+
+  function viewProfile() {
+    const p = S.profile;
+    const name = h("input", { type: "text", value: p.name || "" });
+    const cur = h("select", {}, CURRENCIES.map(([c, t]) => h("option", { value: c, selected: c === (p.baseCurrency || "KZT") }, `${c} · ${t}`)));
+    async function save(ev) {
+      ev.preventDefault();
+      try {
+        await F.updateDoc(F.doc(db, "users", S.user.uid), { name: name.value.trim() || p.name, baseCurrency: cur.value });
+        S.msg = { cls: "note", text: "Сохранено." };
+      } catch (e) { S.msg = { cls: "err", text: errText(e) }; }
+      render();
+    }
+    return [
+      h("h1", {}, "Профиль"), h("p", { class: "muted" }, p.email),
+      h("form", { class: "card", onsubmit: save },
+        h("label", {}, "Имя"), name,
+        h("label", {}, "Основная валюта (в ней считаются итоги)"), cur,
+        h("button", { class: "block", type: "submit" }, "Сохранить"),
+        S.msg && h("div", { class: S.msg.cls }, S.msg.text)),
+      h("div", { class: "card" }, uidBlock()),
+      h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")
+    ];
+  }
+
+  function viewUsers() {
+    const nameOf = (id) => { const u = S.users.find((x) => x.id === id); return u ? (u.name || u.email) : id; };
+    async function setStatus(u, status) {
+      if (status === "blocked" && !confirmInline(u)) return;
+      try {
+        await F.updateDoc(F.doc(db, "users", u.id), { status });
+        await F.addDoc(F.collection(db, "audit"), { by: S.user.uid, target: u.id, action: "status", from: u.status || null, to: status, at: F.serverTimestamp() });
+        S.msg = null;
+      } catch (e) { S.msg = { cls: "err", text: errText(e) }; render(); }
+    }
+    // двойное нажатие вместо всплывающего окна подтверждения
+    function confirmInline(u) {
+      if (S.armed === u.id) { S.armed = null; return true; }
+      S.armed = u.id;
+      S.msg = { cls: "err", text: `Нажмите «Отключить» ещё раз, чтобы закрыть доступ: ${u.name || u.email}` };
+      render();
+      return false;
+    }
+    const link = location.origin + location.pathname;
+    const copyBtn = h("button", { class: "ghost small", onclick: async () => {
+      try { await navigator.clipboard.writeText(link); copyBtn.textContent = "Скопировано"; } catch (e) { copyBtn.textContent = "Скопируйте вручную"; }
+    } }, "Копировать");
+
+    const item = (u) => {
+      const me = u.id === S.user.uid;
+      const st = u.status || "pending";
+      return h("div", { class: "item" },
+        h("div", { class: "row" },
+          h("div", { class: "grow" },
+            h("div", { class: "ellipsis", style: "font-weight:600" }, u.name || "Без имени"),
+            h("div", { class: "muted ellipsis" }, u.email || "")),
+          me ? h("span", { class: "badge admin" }, "Вы") : h("span", { class: "badge " + st }, STATUS[st] || st)),
+        !me && h("div", { class: "row", style: "margin-top:8px" },
+          st !== "active" && h("button", { class: "small", onclick: () => setStatus(u, "active") }, st === "blocked" ? "Включить" : "Одобрить"),
+          st !== "blocked" && h("button", { class: "small ghost", onclick: () => setStatus(u, "blocked") }, "Отключить")));
+    };
+    return [
+      h("h1", {}, "Пользователи"), h("p", { class: "muted" }, `Всего: ${S.users.length}`),
+      h("div", { class: "card" },
+        h("h2", {}, "Пригласить"),
+        h("p", { class: "muted" }, "Отправьте человеку эту ссылку. После регистрации он появится в списке, и вы его одобрите."),
+        h("div", { class: "row" }, h("div", { class: "code grow" }, link), copyBtn)),
+      S.msg && h("div", { class: S.msg.cls, style: "margin-bottom:12px" }, S.msg.text),
+      h("div", { class: "card" }, S.users.length ? S.users.map(item) : h("p", { class: "muted" }, "Пока никого нет.")),
+      h("div", { class: "card" },
+        h("h2", {}, "Журнал действий"),
+        S.audit.length ? S.audit.map((a) => h("div", { class: "item" },
+          h("div", {}, `${nameOf(a.target)}: ${STATUS[a.from] || "—"} → ${STATUS[a.to] || a.to}`),
+          h("div", { class: "muted" }, `${fmtDate(a.at)} · ${nameOf(a.by)}`))) : h("p", { class: "muted" }, "Записей пока нет."))
+    ];
+  }
+}
+</script>
+</body>
+</html>
