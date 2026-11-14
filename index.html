@@ -475,13 +475,13 @@ async function start() {
           const cur = h("select", {}, CURRENCIES.map(([c]) => h("option", { value: c, selected: c === d.currency }, c)));
           if (d.currency && !CUR_CODES.has(d.currency)) cur.prepend(h("option", { value: d.currency, selected: true }, d.currency));
           inputs.currency = cur;
-          body.append(h("label", {}, f.label + (f.required ? " *" : "")), h("div", { class: "grid-amt" }, el, cur), hint && h("div", { class: "hint" }, hint));
+          body.append(h("label", {}, f.label + (f.required ? " *" : "")), h("div", { class: "grid-amt" }, el, cur), hint ? h("div", { class: "hint" }, hint) : "");
         } else if (f.half) {
           pend.push(h("div", {}, h("label", {}, f.label), el));
           if (pend.length === 2) flushHalf();
         } else {
           flushHalf();
-          body.append(h("label", {}, f.label + (f.required ? " *" : "")), el, hint && h("div", { class: "hint" }, hint));
+          body.append(h("label", {}, f.label + (f.required ? " *" : "")), el, hint ? h("div", { class: "hint" }, hint) : "");
         }
       }
       flushHalf();
