@@ -108,9 +108,12 @@ const CUR_CODES = new Set(CURRENCIES.map((c) => c[0]));
 const ACCOUNT_TYPES = { cash: "Наличные", card: "Карта / банковский счёт", deposit: "Депозит", ewallet: "Электронный кошелёк", other: "Другое" };
 const ASSET_CATS = {
   realty: "Недвижимость", land: "Земля", car: "Транспорт", animals: "Животные",
-  investment: "Вложения и инвестиции", business: "Бизнес", receivable: "Долги мне",
+  securities: "Ценные бумаги", investment: "Вложения и доли", business: "Бизнес", receivable: "Долги мне",
   valuables: "Ценности", other: "Другое"
 };
+const SEC_TYPES = { stock: "Акции", bond: "Облигации", etf: "Фонды (ETF, ПИФ)", deposit_note: "Ноты, депозитарные расписки", other: "Другое" };
+// категории, где стоимость = количество × цена за единицу
+const UNIT_CATS = { animals: ["count", "unitValue"], securities: ["qty", "price"] };
 const LIAB_KINDS = { mortgage: "Ипотека", loan: "Кредит", installment: "Рассрочка", credit_card: "Кредитная карта", personal: "Долг человеку", other: "Другое" };
 const STATUS = { active: "Активен", pending: "Ожидает", blocked: "Отключён" };
 const SECTION_NAMES = { accounts: "счёт", assets: "актив", liabilities: "обязательство" };
@@ -141,11 +144,16 @@ const F_ACCOUNT = [
 ];
 const F_ASSET = [
   { key: "category", label: "Категория", type: "select", options: ASSET_CATS },
-  { key: "name", label: "Название", type: "text", required: true, placeholderBy: { realty: "Квартира на Кабанбай батыра", land: "Участок 10 соток", car: "Toyota Camry 2020", animals: "Лошади", investment: "Акции, доля в квартире…", business: "Магазин", receivable: "Ерлан — заём", valuables: "Золото, часы", other: "" } },
+  { key: "name", label: "Название", type: "text", required: true, placeholderBy: { realty: "Квартира на Кабанбай батыра", land: "Участок 10 соток", car: "Toyota Camry 2020", animals: "Лошади", securities: "Kaspi.kz, Apple, облигации Минфина…", investment: "Доля в бизнесе, вклад в квартиру…", business: "Магазин", receivable: "Ерлан — заём", valuables: "Золото, часы", other: "" } },
   { key: "kind", label: "Вид животных", type: "text", placeholder: "лошади, коровы, овцы…", show: (d) => d.category === "animals" },
   { key: "count", label: "Количество, голов", type: "number", show: (d) => d.category === "animals", half: true },
   { key: "unitValue", label: "Цена за голову", type: "number", show: (d) => d.category === "animals", half: true },
-  { key: "value", label: "Текущая стоимость", type: "money", required: true, hintBy: { animals: "Если пусто — посчитается: количество × цена за голову", receivable: "Сколько вам должны сейчас" } },
+  { key: "secType", label: "Вид бумаг", type: "select", options: SEC_TYPES, show: (d) => d.category === "securities" },
+  { key: "ticker", label: "Тикер", type: "text", placeholder: "KSPI, AAPL…", show: (d) => d.category === "securities", half: true },
+  { key: "broker", label: "Брокер", type: "text", placeholder: "Freedom, Halyk Invest…", show: (d) => d.category === "securities", half: true },
+  { key: "qty", label: "Количество, шт.", type: "number", show: (d) => d.category === "securities", half: true },
+  { key: "price", label: "Цена за 1 шт.", type: "number", show: (d) => d.category === "securities", half: true },
+  { key: "value", label: "Текущая стоимость", type: "money", required: true, hintBy: { animals: "Если пусто — посчитается: количество × цена за голову", securities: "Если пусто — посчитается: количество × цена за 1 шт.", receivable: "Сколько вам должны сейчас" } },
   { key: "address", label: "Адрес", type: "text", show: (d) => d.category === "realty" || d.category === "land" },
   { key: "area", label: "Площадь, м²", type: "number", show: (d) => d.category === "realty", half: true },
   { key: "rooms", label: "Комнат", type: "number", show: (d) => d.category === "realty", half: true },
@@ -369,7 +377,8 @@ async function start() {
     return amount / r[cur] * r[base];
   }
   function assetValue(a) {
-    if (a.category === "animals" && (a.value == null || a.value === 0) && a.count && a.unitValue) return a.count * a.unitValue;
+    const u = UNIT_CATS[a.category];
+    if (u && (a.value == null || a.value === 0) && a[u[0]] && a[u[1]]) return a[u[0]] * a[u[1]];
     return a.value || 0;
   }
   function totals() {
@@ -492,7 +501,8 @@ async function start() {
       }
       data.currency = d.currency || baseCur();
       if (section === "assets") {
-        if ((data.value == null) && data.category === "animals" && data.count && data.unitValue) data.value = data.count * data.unitValue;
+        const u = UNIT_CATS[data.category];
+        if (data.value == null && u && data[u[0]] && data[u[1]]) data.value = data[u[0]] * data[u[1]];
         if (data.value == null) return say("err", "Укажите текущую стоимость.");
       } else if (data.balance == null) {
         return say("err", section === "accounts" ? "Укажите остаток." : "Укажите остаток долга.");
@@ -735,6 +745,7 @@ async function start() {
       const bits = [];
       if (a.category === "animals") { if (a.kind) bits.push(a.kind); if (a.count) bits.push(`${fmtNum(a.count)} гол.`); if (a.unitValue) bits.push(`по ${fmtMoney(a.unitValue, a.currency)}`); }
       if (a.category === "realty") { if (a.area) bits.push(`${fmtNum(a.area)} м²`); if (a.rooms) bits.push(`${a.rooms}-комн.`); if (a.address) bits.push(a.address); }
+      if (a.category === "securities") { if (a.secType) bits.push(SEC_TYPES[a.secType] || ""); if (a.ticker) bits.push(a.ticker); if (a.qty) bits.push(`${fmtNum(a.qty)} шт.`); if (a.price) bits.push(`по ${fmtMoney(a.price, a.currency)}`); if (a.broker) bits.push(a.broker); }
       if (a.category === "land" && a.address) bits.push(a.address);
       if (a.category === "car" && a.plate) bits.push(a.plate);
       if (a.category === "receivable") { if (a.debtor) bits.push(a.debtor); if (a.dueDate) bits.push("до " + fmtDay(a.dueDate)); }
@@ -760,7 +771,7 @@ async function start() {
         groups.length ? groups.map(([k, list]) => [
           h("div", { class: "row group-title" }, h("div", { class: "grow" }, ASSET_CATS[k]), h("div", { class: "num" }, fmtMoney(t.byCat[k] || 0, base, 0))),
           list.map((a) => itemRow("assets", a, a.name, assetSub(a), assetValue(a), a.currency))
-        ]) : h("div", { class: "empty" }, "Недвижимость, транспорт, животные, вложения, долги вам"))
+        ]) : h("div", { class: "empty" }, "Недвижимость, транспорт, животные, ценные бумаги, вложения, долги вам"))
     ];
   }
 
