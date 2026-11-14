@@ -181,13 +181,13 @@ function h(tag, props = {}, ...kids) {
     else if (v === true) e.setAttribute(k, "");
     else if (v !== false && v != null) e.setAttribute(k, v);
   }
-  for (const c of kids.flat()) {
+  for (const c of kids.flat(Infinity)) {
     if (c == null || c === false) continue;
     e.append(c.nodeType ? c : document.createTextNode(String(c)));
   }
   return e;
 }
-function show(...nodes) { root.replaceChildren(...nodes.flat().filter(Boolean)); }
+function show(...nodes) { root.replaceChildren(...nodes.flat(Infinity).filter((n) => n != null && n !== false && n !== "")); }
 function errText(e) { return AUTH_ERRORS[e && e.code] || (e && e.message) || "Что-то пошло не так."; }
 function fmtDate(ts) {
   if (!ts || !ts.toDate) return "";
@@ -213,7 +213,7 @@ function fmtMoney(n, cur, digits) {
   if (n == null || !Number.isFinite(n)) return "—";
   const maxD = digits != null ? digits : (Math.abs(n) >= 1000 || ["KZT", "RUB", "UZS", "KGS", "KRW", "JPY"].includes(cur) ? 0 : 2);
   try {
-    return new Intl.NumberFormat("ru-RU", { style: "currency", currency: cur, maximumFractionDigits: maxD, minimumFractionDigits: 0 }).format(n);
+    return new Intl.NumberFormat("ru-RU", { style: "currency", currency: cur, currencyDisplay: "narrowSymbol", maximumFractionDigits: maxD, minimumFractionDigits: 0 }).format(n);
   } catch (e) {
     return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: maxD }).format(n) + " " + cur;
   }
