@@ -14,25 +14,38 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
-  body { font: 16px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); }
-  #app { max-width: 640px; margin: 0 auto; min-height: 100%; padding: 16px 16px 96px; }
+  body { font: 16px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); -webkit-tap-highlight-color: transparent; }
+  #app { max-width: 640px; margin: 0 auto; min-height: 100%; padding: 16px 16px 100px; }
   h1 { font-size: 22px; margin: 0 0 4px; }
-  h2 { font-size: 17px; margin: 0 0 12px; }
+  h2 { font-size: 17px; margin: 0; }
   p { margin: 0 0 12px; }
   .muted { color: var(--muted); font-size: 14px; }
+  .small-text { font-size: 13px; }
   .center { text-align: center; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pos { color: var(--ok); } .neg { color: var(--bad); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
-  .hero { background: var(--brand); color: #fff; border-radius: 18px; padding: 28px 20px; margin-bottom: 16px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .hero { background: var(--brand); color: #fff; border-radius: 18px; padding: 22px 20px; margin-bottom: 16px; }
   .hero .muted { color: #b9d3cf; }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
-  input, select { width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
-  input:focus, select:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; }
+  .hero .big { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin: 2px 0 12px; }
+  .hero .split { display: flex; gap: 12px; }
+  .hero .split > div { flex: 1; background: rgba(255,255,255,.08); border-radius: 12px; padding: 10px 12px; }
+  .hero .split b { display: block; font-size: 17px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+  input, select, textarea { width: 100%; padding: 12px; font: inherit; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+  textarea { min-height: 70px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .grid-amt { display: grid; grid-template-columns: 1fr 110px; gap: 0 10px; }
   button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 12px 16px; background: var(--brand); color: #fff; font-weight: 600; }
   button.block { width: 100%; margin-top: 12px; }
   button.ghost { background: transparent; color: var(--brand); border: 1px solid var(--line); }
   button.link { background: none; color: var(--brand-2); padding: 6px 0; font-weight: 500; }
   button.small { padding: 7px 12px; font-size: 14px; }
+  button.add { padding: 6px 12px; font-size: 14px; border-radius: 999px; background: var(--ok-bg); color: var(--brand); }
   button.danger { background: var(--bad); }
+  button.danger-ghost { background: transparent; color: var(--bad); border: 1px solid var(--bad-bg); }
   button:disabled { opacity: .55; cursor: default; }
   .row { display: flex; align-items: center; gap: 10px; }
   .row .grow { flex: 1; min-width: 0; }
@@ -44,30 +57,64 @@
   .badge.admin { background: var(--brand); color: #fff; }
   .err { background: var(--bad-bg); color: var(--bad); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-top: 12px; }
   .note { background: var(--ok-bg); color: var(--ok); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-top: 12px; }
+  .warnbox { background: var(--warn-bg); color: var(--warn); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; }
   .item { padding: 12px 0; border-top: 1px solid var(--line); }
   .item:first-of-type { border-top: 0; }
+  .tap { cursor: pointer; }
+  .tap:active { background: var(--bg); }
+  .item .amt { text-align: right; }
+  .group-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 14px 0 2px; }
   .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; background: var(--bg); padding: 8px 10px; border-radius: 8px; word-break: break-all; }
-  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  .bar { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .bar > span { display: block; height: 100%; background: var(--brand-2); border-radius: 99px; }
+  .banner { background: var(--warn-bg); color: #5c3b00; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center; }
+  .empty { text-align: center; padding: 14px 0 6px; color: var(--muted); font-size: 14px; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
   nav .inner { max-width: 640px; margin: 0 auto; display: flex; }
-  nav button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 14px 4px; font-weight: 500; font-size: 14px; }
+  nav button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 14px 2px; font-weight: 500; font-size: 13px; }
   nav button.on { color: var(--brand); font-weight: 700; box-shadow: inset 0 3px 0 var(--brand); }
   .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 16px 0 4px; }
   .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  #modal:empty { display: none; }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 25, 24, .45); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: var(--card); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+  @media (min-width: 700px) { .overlay { align-items: center; } .sheet { border-radius: 18px; } }
+  .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .x { background: none; color: var(--muted); font-size: 22px; padding: 4px 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 </style>
 </head>
 <body>
 <div id="app"><p class="muted center" style="padding-top:40vh">Загрузка…</p></div>
+<div id="modal"></div>
 
 <script src="config.js"></script>
 <script type="module">
 const V = "10.12.2";
 const CDN = `https://www.gstatic.com/firebasejs/${V}/`;
 
+// ---------- справочники ----------
 const CURRENCIES = [
   ["KZT", "Тенге ₸"], ["USD", "Доллар США $"], ["EUR", "Евро €"], ["CNY", "Юань ¥"], ["RUB", "Рубль ₽"],
-  ["GBP", "Фунт £"], ["TRY", "Турецкая лира ₺"], ["AED", "Дирхам ОАЭ"], ["KGS", "Кыргызский сом"], ["UZS", "Узбекский сум"]
+  ["GBP", "Фунт стерлингов"], ["TRY", "Турецкая лира"], ["AED", "Дирхам ОАЭ"], ["KGS", "Кыргызский сом"],
+  ["UZS", "Узбекский сум"], ["CHF", "Швейцарский франк"], ["JPY", "Японская иена"], ["KRW", "Корейская вона"],
+  ["GEL", "Грузинский лари"], ["AZN", "Азербайджанский манат"], ["BYN", "Белорусский рубль"], ["TJS", "Таджикский сомони"],
+  ["TMT", "Туркменский манат"], ["INR", "Индийская рупия"], ["THB", "Тайский бат"], ["SAR", "Саудовский риял"],
+  ["CAD", "Канадский доллар"], ["AUD", "Австралийский доллар"], ["HKD", "Гонконгский доллар"], ["SGD", "Сингапурский доллар"],
+  ["PLN", "Польский злотый"], ["CZK", "Чешская крона"], ["XAU", "Золото (тройская унция)"]
 ];
+const CUR_CODES = new Set(CURRENCIES.map((c) => c[0]));
+
+const ACCOUNT_TYPES = { cash: "Наличные", card: "Карта / банковский счёт", deposit: "Депозит", ewallet: "Электронный кошелёк", other: "Другое" };
+const ASSET_CATS = {
+  realty: "Недвижимость", land: "Земля", car: "Транспорт", animals: "Животные",
+  investment: "Вложения и инвестиции", business: "Бизнес", receivable: "Долги мне",
+  valuables: "Ценности", other: "Другое"
+};
+const LIAB_KINDS = { mortgage: "Ипотека", loan: "Кредит", installment: "Рассрочка", credit_card: "Кредитная карта", personal: "Долг человеку", other: "Другое" };
 const STATUS = { active: "Активен", pending: "Ожидает", blocked: "Отключён" };
+const SECTION_NAMES = { accounts: "счёт", assets: "актив", liabilities: "обязательство" };
+
 const AUTH_ERRORS = {
   "auth/invalid-credential": "Неверный email или пароль.",
   "auth/invalid-email": "Проверьте адрес email.",
@@ -79,10 +126,52 @@ const AUTH_ERRORS = {
   "auth/popup-blocked": "Браузер заблокировал окно входа. Разрешите всплывающие окна.",
   "auth/network-request-failed": "Нет соединения с интернетом.",
   "auth/too-many-requests": "Слишком много попыток. Попробуйте позже.",
-  "auth/unauthorized-domain": "Этот адрес сайта не добавлен в Firebase (Authorized domains)."
+  "auth/unauthorized-domain": "Этот адрес сайта не добавлен в Firebase (Authorized domains).",
+  "permission-denied": "Нет доступа. Возможно, ваш аккаунт ещё не одобрен."
 };
 
+// ---------- поля форм ----------
+const F_ACCOUNT = [
+  { key: "name", label: "Название", type: "text", required: true, placeholder: "Kaspi Gold, наличные дома…" },
+  { key: "type", label: "Тип", type: "select", options: ACCOUNT_TYPES },
+  { key: "balance", label: "Остаток", type: "money", required: true },
+  { key: "rate", label: "Ставка, % годовых", type: "number", show: (d) => d.type === "deposit" },
+  { key: "endDate", label: "Срок депозита до", type: "date", show: (d) => d.type === "deposit" },
+  { key: "note", label: "Заметка", type: "textarea" }
+];
+const F_ASSET = [
+  { key: "category", label: "Категория", type: "select", options: ASSET_CATS },
+  { key: "name", label: "Название", type: "text", required: true, placeholderBy: { realty: "Квартира на Кабанбай батыра", land: "Участок 10 соток", car: "Toyota Camry 2020", animals: "Лошади", investment: "Акции, доля в квартире…", business: "Магазин", receivable: "Ерлан — заём", valuables: "Золото, часы", other: "" } },
+  { key: "kind", label: "Вид животных", type: "text", placeholder: "лошади, коровы, овцы…", show: (d) => d.category === "animals" },
+  { key: "count", label: "Количество, голов", type: "number", show: (d) => d.category === "animals", half: true },
+  { key: "unitValue", label: "Цена за голову", type: "number", show: (d) => d.category === "animals", half: true },
+  { key: "value", label: "Текущая стоимость", type: "money", required: true, hintBy: { animals: "Если пусто — посчитается: количество × цена за голову", receivable: "Сколько вам должны сейчас" } },
+  { key: "address", label: "Адрес", type: "text", show: (d) => d.category === "realty" || d.category === "land" },
+  { key: "area", label: "Площадь, м²", type: "number", show: (d) => d.category === "realty", half: true },
+  { key: "rooms", label: "Комнат", type: "number", show: (d) => d.category === "realty", half: true },
+  { key: "plate", label: "Госномер / VIN", type: "text", show: (d) => d.category === "car" },
+  { key: "debtor", label: "Кто должен", type: "text", show: (d) => d.category === "receivable" },
+  { key: "dueDate", label: "Вернуть до", type: "date", show: (d) => d.category === "receivable" },
+  { key: "purchaseValue", label: "Цена покупки", type: "number", show: (d) => d.category !== "receivable", half: true },
+  { key: "purchaseDate", label: "Дата покупки", type: "date", show: (d) => d.category !== "receivable", half: true },
+  { key: "note", label: "Заметка", type: "textarea" }
+];
+const F_LIAB = [
+  { key: "kind", label: "Вид", type: "select", options: LIAB_KINDS },
+  { key: "name", label: "Название", type: "text", required: true, placeholder: "Ипотека Отбасы, рассрочка Kaspi…" },
+  { key: "lender", label: "Кому должен", type: "text", placeholder: "Банк или человек" },
+  { key: "balance", label: "Остаток долга", type: "money", required: true },
+  { key: "monthlyPayment", label: "Платёж в месяц", type: "number", half: true },
+  { key: "paymentDay", label: "День платежа", type: "number", half: true, placeholder: "1–31" },
+  { key: "rate", label: "Ставка, % годовых", type: "number", half: true },
+  { key: "endDate", label: "Погасить до", type: "date", half: true },
+  { key: "initialAmount", label: "Сумма при оформлении", type: "number" },
+  { key: "note", label: "Заметка", type: "textarea" }
+];
+
+// ---------- утилиты ----------
 const root = document.getElementById("app");
+const modalRoot = document.getElementById("modal");
 function h(tag, props = {}, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
@@ -104,7 +193,78 @@ function fmtDate(ts) {
   if (!ts || !ts.toDate) return "";
   return ts.toDate().toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
+function fmtDay(s) {
+  if (!s) return "";
+  const [y, m, d] = s.split("-");
+  return d && m && y ? `${d}.${m}.${y}` : s;
+}
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function parseNum(s) {
+  if (s == null) return null;
+  const t = String(s).replace(/[\s ]/g, "").replace(",", ".");
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+function fmtMoney(n, cur, digits) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const maxD = digits != null ? digits : (Math.abs(n) >= 1000 || ["KZT", "RUB", "UZS", "KGS", "KRW", "JPY"].includes(cur) ? 0 : 2);
+  try {
+    return new Intl.NumberFormat("ru-RU", { style: "currency", currency: cur, maximumFractionDigits: maxD, minimumFractionDigits: 0 }).format(n);
+  } catch (e) {
+    return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: maxD }).format(n) + " " + cur;
+  }
+}
+function fmtNum(n) { return n == null || !Number.isFinite(n) ? "" : new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n); }
+function sum(arr) { return arr.reduce((a, b) => a + b, 0); }
 
+// ---------- курсы валют ----------
+const RATE_SOURCES = [
+  async () => {
+    const r = await fetch("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    const rates = {}; for (const [k, v] of Object.entries(j.usd || {})) rates[k.toUpperCase()] = v;
+    return { date: j.date, rates };
+  },
+  async () => {
+    const r = await fetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    const rates = {}; for (const [k, v] of Object.entries(j.usd || {})) rates[k.toUpperCase()] = v;
+    return { date: j.date, rates };
+  },
+  async () => {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    const d = j.time_last_update_unix ? new Date(j.time_last_update_unix * 1000) : new Date();
+    return { date: d.toISOString().slice(0, 10), rates: j.rates || {} };
+  }
+];
+function readCachedRates() {
+  try { return JSON.parse(localStorage.getItem("mf_rates") || "null"); } catch (e) { return null; }
+}
+async function fetchRates(force) {
+  const cached = readCachedRates();
+  if (!force && cached && Date.now() - cached.fetched < 6 * 3600 * 1000) return cached;
+  for (const src of RATE_SOURCES) {
+    try {
+      const res = await src();
+      if (res.rates && res.rates.KZT) {
+        const out = { ...res, fetched: Date.now() };
+        try { localStorage.setItem("mf_rates", JSON.stringify(out)); } catch (e) {}
+        return out;
+      }
+    } catch (e) { /* пробуем следующий источник */ }
+  }
+  return cached;
+}
+
+// ---------- запуск ----------
 const cfg = window.FIREBASE_CONFIG;
 if (!cfg || !cfg.apiKey || cfg.apiKey.includes("ВСТАВЬТЕ")) {
   show(h("div", { class: "hero" }, h("h1", {}, "Мои финансы"), h("p", { class: "muted" }, "Приложение ещё не подключено к базе.")),
@@ -126,13 +286,22 @@ async function start() {
     db = F.getFirestore(app);
   }
 
-  const S = { user: null, profile: null, isAdmin: false, tab: "home", users: [], audit: [], msg: null, armed: null };
-  let unsubs = [];
-  const stopAll = () => { unsubs.forEach((u) => u()); unsubs = []; };
+  const fresh = () => ({
+    user: null, profile: null, isAdmin: false, tab: "home", users: [], audit: [], msg: null, armed: null,
+    viewUid: null, viewProfile: null, data: { accounts: [], assets: [], liabilities: [] }, loaded: {}, dataErr: null
+  });
+  const S = fresh();
+  S.rates = readCachedRates();
+  let unsubs = [];      // подписки сессии
+  let dataUnsubs = [];  // подписки на данные просматриваемого бюджета
+  const stopData = () => { dataUnsubs.forEach((u) => u()); dataUnsubs = []; };
+  const stopAll = () => { stopData(); unsubs.forEach((u) => u()); unsubs = []; };
+
+  fetchRates(false).then((r) => { if (r) { S.rates = r; render(); } });
 
   A.onAuthStateChanged(auth, async (user) => {
-    stopAll();
-    Object.assign(S, { user, profile: null, isAdmin: false, tab: "home", users: [], audit: [], msg: null });
+    stopAll(); closeModal();
+    Object.assign(S, fresh(), { user, rates: S.rates });
     if (!user) return renderLogin();
     if (!user.emailVerified) return renderVerify();
     try { await enter(); } catch (e) { renderFatal(e); }
@@ -146,22 +315,213 @@ async function start() {
     const ref = F.doc(db, "users", u.uid);
     const snap = await F.getDoc(ref);
     if (!snap.exists()) {
-      await u.getIdToken(true); // чтобы в токене был признак подтверждённого email
+      await u.getIdToken(true);
       await F.setDoc(ref, {
         name: u.displayName || (u.email || "").split("@")[0],
         email: u.email, status: "pending", baseCurrency: "KZT", createdAt: F.serverTimestamp()
       });
     }
-    unsubs.push(F.onSnapshot(ref, (d) => { S.profile = d.data() || null; render(); }, renderFatal));
+    unsubs.push(F.onSnapshot(ref, (d) => {
+      S.profile = d.data() || null;
+      const canUse = S.isAdmin || (S.profile && S.profile.status === "active");
+      if (canUse && !S.viewUid) openBudget(u.uid);
+      if (!canUse) { stopData(); S.viewUid = null; }
+      if (S.viewUid === u.uid) S.viewProfile = S.profile;
+      render();
+    }, renderFatal));
 
     if (S.isAdmin) {
       unsubs.push(F.onSnapshot(F.query(F.collection(db, "users"), F.orderBy("createdAt", "desc")), (q) => {
-        S.users = q.docs.map((d) => ({ id: d.id, ...d.data() })); render();
+        S.users = q.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (S.viewUid && S.viewUid !== S.user.uid) S.viewProfile = S.users.find((x) => x.id === S.viewUid) || S.viewProfile;
+        render();
       }, renderFatal));
       unsubs.push(F.onSnapshot(F.query(F.collection(db, "audit"), F.orderBy("at", "desc"), F.limit(50)), (q) => {
         S.audit = q.docs.map((d) => ({ id: d.id, ...d.data() })); render();
       }, renderFatal));
     }
+  }
+
+  function openBudget(uid) {
+    stopData();
+    S.viewUid = uid;
+    S.viewProfile = uid === S.user.uid ? S.profile : (S.users.find((x) => x.id === uid) || null);
+    S.data = { accounts: [], assets: [], liabilities: [] };
+    S.loaded = {}; S.dataErr = null;
+    for (const sec of ["accounts", "assets", "liabilities"]) {
+      dataUnsubs.push(F.onSnapshot(F.collection(db, "users", uid, sec), (q) => {
+        S.data[sec] = q.docs.map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
+        S.loaded[sec] = true;
+        render();
+      }, (e) => { S.dataErr = errText(e); render(); }));
+    }
+  }
+
+  // ---------- пересчёт ----------
+  const baseCur = () => (S.viewProfile && S.viewProfile.baseCurrency) || "KZT";
+  function toBase(amount, cur) {
+    const base = baseCur();
+    if (amount == null || !Number.isFinite(amount)) return 0;
+    if (!cur || cur === base) return amount;
+    const r = S.rates && S.rates.rates;
+    if (!r || !r[cur] || !r[base]) return null;
+    return amount / r[cur] * r[base];
+  }
+  function assetValue(a) {
+    if (a.category === "animals" && (a.value == null || a.value === 0) && a.count && a.unitValue) return a.count * a.unitValue;
+    return a.value || 0;
+  }
+  function totals() {
+    const miss = new Set();
+    const conv = (amt, cur) => { const v = toBase(amt, cur); if (v == null) { miss.add(cur); return 0; } return v; };
+    const money = sum(S.data.accounts.map((a) => conv(a.balance || 0, a.currency)));
+    const byCat = {};
+    for (const a of S.data.assets) byCat[a.category || "other"] = (byCat[a.category || "other"] || 0) + conv(assetValue(a), a.currency);
+    const property = sum(Object.values(byCat));
+    const debt = sum(S.data.liabilities.map((l) => conv(l.balance || 0, l.currency)));
+    const monthly = sum(S.data.liabilities.map((l) => conv(l.monthlyPayment || 0, l.currency)));
+    return { money, byCat, property, assets: money + property, debt, monthly, net: money + property - debt, miss: [...miss] };
+  }
+
+  // ---------- запись данных ----------
+  const viewingOther = () => S.viewUid && S.viewUid !== S.user.uid;
+  async function logEdit(section, docId, op, name) {
+    if (!viewingOther()) return;
+    try {
+      await F.addDoc(F.collection(db, "audit"), { by: S.user.uid, target: S.viewUid, action: "edit", section, docId, op, name: name || "", at: F.serverTimestamp() });
+    } catch (e) { /* журнал не должен мешать работе */ }
+  }
+  async function saveItem(section, id, data, prev) {
+    const col = F.collection(db, "users", S.viewUid, section);
+    if (id) {
+      const patch = { ...data, updatedAt: F.serverTimestamp(), updatedBy: S.user.uid };
+      const valKey = section === "assets" ? "value" : "balance";
+      const oldV = prev ? prev[valKey] : null;
+      if (oldV !== data[valKey]) {
+        const hist = Array.isArray(prev && prev.history) ? prev.history.slice(-59) : [];
+        hist.push({ d: today(), v: data[valKey] ?? null });
+        patch.history = hist;
+      }
+      await F.updateDoc(F.doc(col, id), patch);
+      await logEdit(section, id, "update", data.name);
+    } else {
+      const ref = await F.addDoc(col, { ...data, history: [{ d: today(), v: (section === "assets" ? data.value : data.balance) ?? null }], createdAt: F.serverTimestamp(), createdBy: S.user.uid, updatedAt: F.serverTimestamp() });
+      await logEdit(section, ref.id, "create", data.name);
+    }
+  }
+  async function deleteItem(section, item) {
+    await F.deleteDoc(F.doc(db, "users", S.viewUid, section, item.id));
+    await logEdit(section, item.id, "delete", item.name);
+  }
+
+  // ---------- модальное окно с формой ----------
+  function closeModal() { modalRoot.replaceChildren(); document.body.style.overflow = ""; }
+  function openForm(section, item) {
+    const spec = section === "accounts" ? F_ACCOUNT : section === "assets" ? F_ASSET : F_LIAB;
+    const defaults = section === "accounts" ? { type: "card" } : section === "assets" ? { category: "realty" } : { kind: "loan" };
+    const isNew = !item;
+    const d = { currency: baseCur(), ...defaults, ...(item || {}) };
+    const inputs = {};
+    let confirmDel = false;
+    const box = h("div", {});
+    const say = (cls, t) => box.replaceChildren(h("div", { class: cls }, t));
+    const body = h("div", {});
+
+    function readInto(obj) {
+      for (const f of spec) {
+        const el = inputs[f.key]; if (!el) continue;
+        if (f.type === "money" || f.type === "number") obj[f.key] = parseNum(el.value);
+        else obj[f.key] = el.value.trim();
+      }
+      if (inputs.currency) obj.currency = inputs.currency.value;
+      return obj;
+    }
+
+    function drawFields() {
+      body.replaceChildren();
+      const pend = [];
+      const flushHalf = () => { if (pend.length) { body.append(h("div", { class: "grid2" }, pend.splice(0))); } };
+      for (const f of spec) {
+        if (f.show && !f.show(d)) { delete inputs[f.key]; continue; }
+        let el;
+        const val = d[f.key];
+        const ph = (f.placeholderBy && f.placeholderBy[d.category]) || f.placeholder || "";
+        if (f.type === "select") {
+          el = h("select", {}, Object.entries(f.options).map(([k, t]) => h("option", { value: k, selected: k === val }, t)));
+          el.addEventListener("change", () => { readInto(d); drawFields(); });
+        } else if (f.type === "textarea") {
+          el = h("textarea", { placeholder: ph }); el.value = val || "";
+        } else if (f.type === "date") {
+          el = h("input", { type: "date", value: val || "" });
+        } else if (f.type === "money" || f.type === "number") {
+          el = h("input", { type: "text", inputmode: "decimal", placeholder: ph, value: val == null ? "" : String(val) });
+        } else {
+          el = h("input", { type: "text", placeholder: ph, value: val || "" });
+        }
+        inputs[f.key] = el;
+        const hint = f.hintBy && f.hintBy[d.category];
+        if (f.type === "money") {
+          flushHalf();
+          const cur = h("select", {}, CURRENCIES.map(([c]) => h("option", { value: c, selected: c === d.currency }, c)));
+          if (d.currency && !CUR_CODES.has(d.currency)) cur.prepend(h("option", { value: d.currency, selected: true }, d.currency));
+          inputs.currency = cur;
+          body.append(h("label", {}, f.label + (f.required ? " *" : "")), h("div", { class: "grid-amt" }, el, cur), hint && h("div", { class: "hint" }, hint));
+        } else if (f.half) {
+          pend.push(h("div", {}, h("label", {}, f.label), el));
+          if (pend.length === 2) flushHalf();
+        } else {
+          flushHalf();
+          body.append(h("label", {}, f.label + (f.required ? " *" : "")), el, hint && h("div", { class: "hint" }, hint));
+        }
+      }
+      flushHalf();
+    }
+    drawFields();
+
+    async function submit(ev) {
+      ev.preventDefault();
+      readInto(d);
+      const data = {};
+      for (const f of spec) {
+        if (f.show && !f.show(d)) continue;
+        const v = d[f.key];
+        if ((f.type === "money" || f.type === "number") && Number.isNaN(v)) return say("err", `Поле «${f.label}»: введите число.`);
+        if (f.required && f.type !== "money" && !v) return say("err", `Заполните поле «${f.label}».`);
+        data[f.key] = v === "" ? null : v;
+      }
+      data.currency = d.currency || baseCur();
+      if (section === "assets") {
+        if ((data.value == null) && data.category === "animals" && data.count && data.unitValue) data.value = data.count * data.unitValue;
+        if (data.value == null) return say("err", "Укажите текущую стоимость.");
+      } else if (data.balance == null) {
+        return say("err", section === "accounts" ? "Укажите остаток." : "Укажите остаток долга.");
+      }
+      const btn = ev.submitter; if (btn) btn.disabled = true;
+      try { await saveItem(section, item && item.id, data, item); closeModal(); }
+      catch (e) { say("err", errText(e)); if (btn) btn.disabled = false; }
+    }
+    async function del() {
+      if (!confirmDel) { confirmDel = true; delBtn.textContent = "Точно удалить? Нажмите ещё раз"; return; }
+      delBtn.disabled = true;
+      try { await deleteItem(section, item); closeModal(); } catch (e) { say("err", errText(e)); delBtn.disabled = false; }
+    }
+    const delBtn = !isNew && h("button", { type: "button", class: "danger-ghost block", onclick: del }, "Удалить");
+
+    const title = (isNew ? "Новый " : "") + (section === "accounts" ? "счёт" : section === "assets" ? "актив" : "долг / кредит");
+    const histList = !isNew && Array.isArray(item.history) && item.history.length > 1 && h("div", { class: "card", style: "margin-top:12px;background:var(--bg)" },
+      h("div", { class: "muted", style: "margin-bottom:4px" }, "История изменений"),
+      item.history.slice(-8).reverse().map((x) => h("div", { class: "row small-text" }, h("div", { class: "grow" }, fmtDay(x.d)), h("div", { class: "num" }, fmtMoney(x.v, item.currency)))));
+
+    const sheet = h("form", { class: "sheet", onsubmit: submit },
+      h("div", { class: "sheet-head" }, h("h2", {}, title.charAt(0).toUpperCase() + title.slice(1)), h("button", { type: "button", class: "x", onclick: closeModal, "aria-label": "Закрыть" }, "×")),
+      body, box,
+      h("button", { type: "submit", class: "block" }, isNew ? "Добавить" : "Сохранить"),
+      delBtn, histList);
+    const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
+    modalRoot.replaceChildren(overlay);
+    document.body.style.overflow = "hidden";
+    const first = sheet.querySelector('input[type="text"]'); if (first && isNew) setTimeout(() => first.focus(), 50);
   }
 
   // ---------- экраны до входа ----------
@@ -197,7 +557,7 @@ async function start() {
     }
 
     show(
-      h("div", { class: "hero" }, h("h1", {}, "Мои финансы"), h("p", { class: "muted" }, "Активы, обязательства и бюджет в одном месте")),
+      h("div", { class: "hero" }, h("h1", {}, "Мои финансы"), h("p", { class: "muted", style: "margin:0" }, "Активы, обязательства и бюджет в одном месте")),
       h("div", { class: "card" },
         h("button", { class: "ghost block", style: "margin-top:0", onclick: google }, "Войти через Google"),
         h("div", { class: "divider" }, "или по email"),
@@ -229,7 +589,7 @@ async function start() {
       try { await A.sendEmailVerification(auth.currentUser); say("note", "Письмо отправлено ещё раз."); } catch (e) { say("err", errText(e)); }
     }
     show(
-      h("div", { class: "hero" }, h("h1", {}, "Подтвердите email"), h("p", { class: "muted" }, auth.currentUser ? auth.currentUser.email : "")),
+      h("div", { class: "hero" }, h("h1", {}, "Подтвердите email"), h("p", { class: "muted", style: "margin:0" }, auth.currentUser ? auth.currentUser.email : "")),
       h("div", { class: "card" },
         h("p", {}, "Мы отправили письмо со ссылкой. Откройте его, нажмите на ссылку и вернитесь сюда."),
         h("button", { class: "block", onclick: check }, "Я подтвердил"),
@@ -249,7 +609,7 @@ async function start() {
     const btn = h("button", { class: "ghost small", onclick: async () => {
       try { await navigator.clipboard.writeText(S.user.uid); btn.textContent = "Скопировано"; } catch (e) { btn.textContent = "Скопируйте вручную"; }
     } }, "Копировать");
-    return h("div", {}, h("label", {}, "Ваш код пользователя"), h("div", { class: "row" }, h("div", { class: "code grow" }, S.user.uid), btn));
+    return h("div", {}, h("label", { style: "margin-top:0" }, "Ваш код пользователя"), h("div", { class: "row" }, h("div", { class: "code grow" }, S.user.uid), btn));
   }
 
   // ---------- экраны после входа ----------
@@ -259,32 +619,181 @@ async function start() {
     if (!S.isAdmin && p.status !== "active") {
       const blocked = p.status === "blocked";
       return show(
-        h("div", { class: "hero" }, h("h1", {}, blocked ? "Доступ отключён" : "Ждём подтверждения"), h("p", { class: "muted" }, p.email)),
+        h("div", { class: "hero" }, h("h1", {}, blocked ? "Доступ отключён" : "Ждём подтверждения"), h("p", { class: "muted", style: "margin:0" }, p.email)),
         h("div", { class: "card" },
           h("p", {}, blocked ? "Администратор отключил ваш доступ. Свяжитесь с ним." : "Ваша заявка отправлена. Как только администратор её одобрит, приложение откроется само."),
           uidBlock(),
           h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")));
     }
-    const tabs = [["home", "Главная"], S.isAdmin && ["users", "Пользователи"], ["profile", "Профиль"]].filter(Boolean);
-    const body = S.tab === "users" && S.isAdmin ? viewUsers() : S.tab === "profile" ? viewProfile() : viewHome();
+    const tabs = [["home", "Главная"], ["assets", "Активы"], ["debts", "Долги"], S.isAdmin && ["users", "Люди"], ["profile", "Профиль"]].filter(Boolean);
+    let body;
+    if (S.tab === "users" && S.isAdmin) body = viewUsers();
+    else if (S.tab === "profile") body = viewProfile();
+    else if (S.tab === "assets") body = [banner(), viewAssets()];
+    else if (S.tab === "debts") body = [banner(), viewDebts()];
+    else body = [banner(), viewHome()];
     show(body, h("nav", {}, h("div", { class: "inner" },
-      tabs.map(([id, title]) => h("button", { class: S.tab === id ? "on" : "", onclick: () => { S.tab = id; S.msg = null; S.armed = null; render(); } }, title)))));
+      tabs.map(([id, title]) => h("button", { class: S.tab === id ? "on" : "", onclick: () => { S.tab = id; S.msg = null; S.armed = null; render(); window.scrollTo(0, 0); } }, title)))));
+  }
+
+  function banner() {
+    if (!viewingOther()) return null;
+    const vp = S.viewProfile || {};
+    return h("div", { class: "banner" },
+      h("div", { class: "grow" }, h("div", { class: "small-text" }, "Вы смотрите бюджет пользователя"), h("b", {}, vp.name || vp.email || "—")),
+      h("button", { class: "small ghost", style: "background:#fff", onclick: () => { openBudget(S.user.uid); render(); } }, "К своему"));
+  }
+
+  function loadingOrError() {
+    if (S.dataErr) return h("div", { class: "err" }, S.dataErr);
+    if (!S.loaded.accounts || !S.loaded.assets || !S.loaded.liabilities) return h("p", { class: "muted center", style: "padding:20px" }, "Загружаю данные…");
+    return null;
+  }
+
+  function ratesNote(t) {
+    if (!t.miss.length) return null;
+    return h("div", { class: "warnbox" }, `Нет курса для: ${t.miss.join(", ")}. Эти суммы не вошли в итог. Обновите курсы в профиле.`);
   }
 
   function viewHome() {
     const p = S.profile;
-    const waiting = S.users.filter((u) => u.status === "pending" && u.id !== S.user.uid).length;
+    const base = baseCur();
+    const waiting = S.isAdmin ? S.users.filter((u) => u.status === "pending" && u.id !== S.user.uid).length : 0;
+    const wait = loadingOrError();
+    const t = totals();
+    const empty = !S.data.accounts.length && !S.data.assets.length && !S.data.liabilities.length;
+    const who = viewingOther() ? (S.viewProfile && S.viewProfile.name) || "Пользователь" : (p.name || "");
+
+    const cats = [["money", "Деньги на счетах", t.money], ...Object.keys(ASSET_CATS).map((k) => [k, ASSET_CATS[k], t.byCat[k] || 0])]
+      .filter((c) => c[2] > 0).sort((a, b) => b[2] - a[2]);
+    const maxCat = Math.max(1, ...cats.map((c) => c[2]));
+
     return [
       h("div", { class: "hero" },
-        h("p", { class: "muted" }, "Здравствуйте,"),
-        h("h1", {}, p.name || "пользователь"),
-        S.isAdmin && h("span", { class: "badge admin", style: "background:#fff;color:var(--brand);margin-top:8px" }, "Главный")),
-      S.isAdmin && waiting > 0 && h("div", { class: "card" },
+        h("div", { class: "row" }, h("div", { class: "grow muted" }, viewingOther() ? `Капитал: ${who}` : `Здравствуйте, ${who}`),
+          S.isAdmin && !viewingOther() && h("span", { class: "badge", style: "background:#fff;color:var(--brand)" }, "Главный")),
+        h("div", { class: "muted", style: "margin-top:10px" }, "Чистый капитал"),
+        h("div", { class: "big num" }, wait ? "…" : fmtMoney(t.net, base, 0)),
+        h("div", { class: "split" },
+          h("div", {}, h("span", { class: "muted small-text" }, "Активы"), h("b", { class: "num" }, wait ? "…" : fmtMoney(t.assets, base, 0))),
+          h("div", {}, h("span", { class: "muted small-text" }, "Долги"), h("b", { class: "num" }, wait ? "…" : fmtMoney(t.debt, base, 0))))),
+      S.isAdmin && waiting > 0 && !viewingOther() && h("div", { class: "card" },
         h("div", { class: "row" }, h("div", { class: "grow" }, `Ожидают одобрения: ${waiting}`),
           h("button", { class: "small", onclick: () => { S.tab = "users"; render(); } }, "Открыть"))),
+      wait,
+      !wait && ratesNote(t),
+      !wait && empty && h("div", { class: "card" },
+        h("h2", { style: "margin-bottom:8px" }, "С чего начать"),
+        h("p", { class: "muted" }, "Добавьте деньги на счетах, имущество и долги. Итог посчитается сам."),
+        h("div", { class: "row", style: "flex-wrap:wrap" },
+          h("button", { class: "small", onclick: () => openForm("accounts") }, "+ Счёт"),
+          h("button", { class: "small", onclick: () => openForm("assets") }, "+ Имущество"),
+          h("button", { class: "small ghost", onclick: () => openForm("liabilities") }, "+ Долг"))),
+      !wait && cats.length > 0 && h("div", { class: "card" },
+        h("div", { class: "card-head" }, h("h2", {}, "Из чего состоит капитал")),
+        cats.map(([k, label, v]) => h("div", { class: "item tap", onclick: () => { S.tab = "assets"; render(); window.scrollTo(0, 0); } },
+          h("div", { class: "row" }, h("div", { class: "grow" }, label), h("div", { class: "num" }, fmtMoney(v, base, 0)),
+            h("div", { class: "muted small-text num", style: "width:42px;text-align:right" }, t.assets ? Math.round(v / t.assets * 100) + "%" : "")),
+          h("div", { class: "bar" }, h("span", { style: `width:${Math.max(2, v / maxCat * 100)}%` }))))),
+      !wait && S.data.liabilities.length > 0 && h("div", { class: "card tap", onclick: () => { S.tab = "debts"; render(); } },
+        h("div", { class: "card-head" }, h("h2", {}, "Долги и кредиты"), h("span", { class: "num neg" }, fmtMoney(t.debt, base, 0))),
+        h("div", { class: "row muted" }, h("div", { class: "grow" }, "Платежи в месяц"), h("div", { class: "num" }, fmtMoney(t.monthly, base, 0))),
+        t.assets > 0 && h("div", { class: "row muted" }, h("div", { class: "grow" }, "Долги к активам"), h("div", { class: "num" }, Math.round(t.debt / t.assets * 100) + "%"))),
+      ratesCard()
+    ];
+  }
+
+  function ratesCard() {
+    const base = baseCur();
+    const r = S.rates && S.rates.rates;
+    if (!r) return h("div", { class: "card muted small-text" }, "Курсы валют загружаются…");
+    const shown = ["USD", "EUR", "CNY", "RUB"].filter((c) => c !== base && r[c] && r[base]);
+    return h("div", { class: "card" },
+      h("div", { class: "card-head" }, h("h2", {}, "Курсы"), h("span", { class: "muted small-text" }, "на " + fmtDay(S.rates.date))),
+      shown.map((c) => h("div", { class: "row small-text" }, h("div", { class: "grow" }, `1 ${c}`), h("div", { class: "num" }, fmtMoney(r[base] / r[c], base, 2)))));
+  }
+
+  function itemRow(section, it, title, sub, amount, cur) {
+    const base = baseCur();
+    const conv = cur !== base ? toBase(amount, cur) : null;
+    return h("div", { class: "item tap", onclick: () => openForm(section, it) },
+      h("div", { class: "row" },
+        h("div", { class: "grow" }, h("div", { class: "ellipsis", style: "font-weight:600" }, title), sub && h("div", { class: "muted small-text ellipsis" }, sub)),
+        h("div", { class: "amt" }, h("div", { class: "num" + (section === "liabilities" ? " neg" : "") }, fmtMoney(amount, cur)),
+          conv != null && h("div", { class: "muted small-text num" }, "≈ " + fmtMoney(conv, base, 0)))));
+  }
+
+  function viewAssets() {
+    const wait = loadingOrError();
+    if (wait) return wait;
+    const base = baseCur();
+    const t = totals();
+    const accs = S.data.accounts;
+    const groups = Object.keys(ASSET_CATS).map((k) => [k, S.data.assets.filter((a) => (a.category || "other") === k)]).filter((g) => g[1].length);
+
+    const assetSub = (a) => {
+      const bits = [];
+      if (a.category === "animals") { if (a.kind) bits.push(a.kind); if (a.count) bits.push(`${fmtNum(a.count)} гол.`); if (a.unitValue) bits.push(`по ${fmtMoney(a.unitValue, a.currency)}`); }
+      if (a.category === "realty") { if (a.area) bits.push(`${fmtNum(a.area)} м²`); if (a.rooms) bits.push(`${a.rooms}-комн.`); if (a.address) bits.push(a.address); }
+      if (a.category === "land" && a.address) bits.push(a.address);
+      if (a.category === "car" && a.plate) bits.push(a.plate);
+      if (a.category === "receivable") { if (a.debtor) bits.push(a.debtor); if (a.dueDate) bits.push("до " + fmtDay(a.dueDate)); }
+      if (a.purchaseValue && a.category !== "receivable") {
+        const diff = assetValue(a) - a.purchaseValue;
+        if (diff) bits.push((diff > 0 ? "+" : "") + fmtMoney(diff, a.currency, 0) + " к покупке");
+      }
+      return bits.join(" · ");
+    };
+
+    return [
+      h("h1", {}, "Активы"),
+      h("p", { class: "muted" }, "Всего: ", h("b", { class: "num" }, fmtMoney(t.assets, base, 0))),
+      ratesNote(t),
       h("div", { class: "card" },
-        h("h2", {}, "Вход и доступ настроены"),
-        h("p", { class: "muted" }, "Следующим шагом здесь появятся счета, активы, обязательства и чистый капитал."))
+        h("div", { class: "card-head" }, h("h2", {}, "Деньги"), h("button", { class: "add", onclick: () => openForm("accounts") }, "+ Добавить")),
+        accs.length ? accs.map((a) => itemRow("accounts", a, a.name, [ACCOUNT_TYPES[a.type] || "", a.type === "deposit" && a.rate ? `${fmtNum(a.rate)}%` : ""].filter(Boolean).join(" · "), a.balance, a.currency))
+          : h("div", { class: "empty" }, "Карты, наличные, депозиты"),
+        accs.length > 1 && h("div", { class: "row", style: "border-top:1px solid var(--line);padding-top:10px;margin-top:4px" },
+          h("div", { class: "grow muted" }, "Итого"), h("b", { class: "num" }, fmtMoney(t.money, base, 0)))),
+      h("div", { class: "card" },
+        h("div", { class: "card-head" }, h("h2", {}, "Имущество"), h("button", { class: "add", onclick: () => openForm("assets") }, "+ Добавить")),
+        groups.length ? groups.map(([k, list]) => [
+          h("div", { class: "row group-title" }, h("div", { class: "grow" }, ASSET_CATS[k]), h("div", { class: "num" }, fmtMoney(t.byCat[k] || 0, base, 0))),
+          list.map((a) => itemRow("assets", a, a.name, assetSub(a), assetValue(a), a.currency))
+        ]) : h("div", { class: "empty" }, "Недвижимость, транспорт, животные, вложения, долги вам"))
+    ];
+  }
+
+  function viewDebts() {
+    const wait = loadingOrError();
+    if (wait) return wait;
+    const base = baseCur();
+    const t = totals();
+    const list = S.data.liabilities;
+    const sub = (l) => {
+      const bits = [LIAB_KINDS[l.kind] || ""];
+      if (l.lender) bits.push(l.lender);
+      if (l.monthlyPayment) bits.push(`${fmtMoney(l.monthlyPayment, l.currency)}/мес`);
+      if (l.paymentDay) bits.push(`${l.paymentDay}-го числа`);
+      if (l.rate) bits.push(`${fmtNum(l.rate)}%`);
+      if (l.endDate) bits.push("до " + fmtDay(l.endDate));
+      return bits.filter(Boolean).join(" · ");
+    };
+    return [
+      h("h1", {}, "Долги"),
+      h("p", { class: "muted" }, "Всего: ", h("b", { class: "num neg" }, fmtMoney(t.debt, base, 0)), " · в месяц: ", h("b", { class: "num" }, fmtMoney(t.monthly, base, 0))),
+      ratesNote(t),
+      h("div", { class: "card" },
+        h("div", { class: "card-head" }, h("h2", {}, "Кредиты и долги"), h("button", { class: "add", onclick: () => openForm("liabilities") }, "+ Добавить")),
+        list.length ? list.map((l) => {
+          const row = itemRow("liabilities", l, l.name, sub(l), l.balance, l.currency);
+          if (l.initialAmount && l.initialAmount > 0 && l.balance != null) {
+            const paid = Math.min(100, Math.max(0, (1 - l.balance / l.initialAmount) * 100));
+            row.append(h("div", { class: "bar" }, h("span", { style: `width:${paid}%;background:var(--ok)` })),
+              h("div", { class: "muted small-text" }, `Погашено ${Math.round(paid)}%`));
+          }
+          return row;
+        }) : h("div", { class: "empty" }, "Ипотека, кредиты, рассрочки, долги людям"))
     ];
   }
 
@@ -300,13 +809,25 @@ async function start() {
       } catch (e) { S.msg = { cls: "err", text: errText(e) }; }
       render();
     }
+    const rbox = h("div", {});
+    async function refreshRates(ev) {
+      const b = ev.currentTarget; b.disabled = true; b.textContent = "Обновляю…";
+      const r = await fetchRates(true);
+      if (r) { S.rates = r; S.msg = { cls: "note", text: `Курсы обновлены на ${fmtDay(r.date)}.` }; }
+      else S.msg = { cls: "err", text: "Не удалось загрузить курсы. Проверьте интернет." };
+      render();
+    }
     return [
       h("h1", {}, "Профиль"), h("p", { class: "muted" }, p.email),
+      S.msg && h("div", { class: S.msg.cls, style: "margin:0 0 12px" }, S.msg.text),
       h("form", { class: "card", onsubmit: save },
-        h("label", {}, "Имя"), name,
+        h("label", { style: "margin-top:0" }, "Имя"), name,
         h("label", {}, "Основная валюта (в ней считаются итоги)"), cur,
-        h("button", { class: "block", type: "submit" }, "Сохранить"),
-        S.msg && h("div", { class: S.msg.cls }, S.msg.text)),
+        h("button", { class: "block", type: "submit" }, "Сохранить")),
+      h("div", { class: "card" },
+        h("div", { class: "card-head" }, h("h2", {}, "Курсы валют"), S.rates && h("span", { class: "muted small-text" }, "на " + fmtDay(S.rates.date))),
+        h("p", { class: "muted small-text" }, "Курсы берутся из открытых источников и обновляются автоматически раз в 6 часов."),
+        h("button", { class: "ghost block", style: "margin-top:4px", onclick: refreshRates }, "Обновить сейчас"), rbox),
       h("div", { class: "card" }, uidBlock()),
       h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")
     ];
@@ -322,7 +843,6 @@ async function start() {
         S.msg = null;
       } catch (e) { S.msg = { cls: "err", text: errText(e) }; render(); }
     }
-    // двойное нажатие вместо всплывающего окна подтверждения
     function confirmInline(u) {
       if (S.armed === u.id) { S.armed = null; return true; }
       S.armed = u.id;
@@ -338,29 +858,38 @@ async function start() {
     const item = (u) => {
       const me = u.id === S.user.uid;
       const st = u.status || "pending";
+      const viewing = S.viewUid === u.id;
       return h("div", { class: "item" },
         h("div", { class: "row" },
           h("div", { class: "grow" },
             h("div", { class: "ellipsis", style: "font-weight:600" }, u.name || "Без имени"),
-            h("div", { class: "muted ellipsis" }, u.email || "")),
+            h("div", { class: "muted ellipsis small-text" }, u.email || "")),
           me ? h("span", { class: "badge admin" }, "Вы") : h("span", { class: "badge " + st }, STATUS[st] || st)),
-        !me && h("div", { class: "row", style: "margin-top:8px" },
-          st !== "active" && h("button", { class: "small", onclick: () => setStatus(u, "active") }, st === "blocked" ? "Включить" : "Одобрить"),
-          st !== "blocked" && h("button", { class: "small ghost", onclick: () => setStatus(u, "blocked") }, "Отключить")));
+        h("div", { class: "row", style: "margin-top:8px;flex-wrap:wrap" },
+          h("button", { class: "small" + (viewing ? " ghost" : ""), disabled: viewing, onclick: () => { openBudget(u.id); S.tab = "home"; render(); window.scrollTo(0, 0); } }, viewing ? "Открыт" : "Открыть бюджет"),
+          !me && st !== "active" && h("button", { class: "small ghost", onclick: () => setStatus(u, "active") }, st === "blocked" ? "Включить" : "Одобрить"),
+          !me && st !== "blocked" && h("button", { class: "small danger-ghost", onclick: () => setStatus(u, "blocked") }, "Отключить")));
+    };
+    const auditText = (a) => {
+      if (a.action === "edit") {
+        const op = a.op === "create" ? "добавил" : a.op === "delete" ? "удалил" : "изменил";
+        return `${op} ${SECTION_NAMES[a.section] || "запись"} «${a.name || "—"}» у ${nameOf(a.target)}`;
+      }
+      return `${nameOf(a.target)}: ${STATUS[a.from] || "—"} → ${STATUS[a.to] || a.to}`;
     };
     return [
       h("h1", {}, "Пользователи"), h("p", { class: "muted" }, `Всего: ${S.users.length}`),
       h("div", { class: "card" },
-        h("h2", {}, "Пригласить"),
-        h("p", { class: "muted" }, "Отправьте человеку эту ссылку. После регистрации он появится в списке, и вы его одобрите."),
+        h("h2", { style: "margin-bottom:6px" }, "Пригласить"),
+        h("p", { class: "muted small-text" }, "Отправьте человеку эту ссылку. После регистрации он появится в списке, и вы его одобрите."),
         h("div", { class: "row" }, h("div", { class: "code grow" }, link), copyBtn)),
       S.msg && h("div", { class: S.msg.cls, style: "margin-bottom:12px" }, S.msg.text),
       h("div", { class: "card" }, S.users.length ? S.users.map(item) : h("p", { class: "muted" }, "Пока никого нет.")),
       h("div", { class: "card" },
-        h("h2", {}, "Журнал действий"),
+        h("h2", { style: "margin-bottom:6px" }, "Журнал действий"),
         S.audit.length ? S.audit.map((a) => h("div", { class: "item" },
-          h("div", {}, `${nameOf(a.target)}: ${STATUS[a.from] || "—"} → ${STATUS[a.to] || a.to}`),
-          h("div", { class: "muted" }, `${fmtDate(a.at)} · ${nameOf(a.by)}`))) : h("p", { class: "muted" }, "Записей пока нет."))
+          h("div", { class: "small-text" }, auditText(a)),
+          h("div", { class: "muted small-text" }, `${fmtDate(a.at)} · ${nameOf(a.by)}`))) : h("p", { class: "muted" }, "Записей пока нет."))
     ];
   }
 }
