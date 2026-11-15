@@ -110,6 +110,19 @@
   .goal .big-ico { width: 44px; height: 44px; border-radius: 12px; background: var(--ok-bg); display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
   .goal .bar { height: 10px; margin-top: 10px; }
   .goal.done { border-color: #9fd3b4; background: #f3fbf6; }
+  .lock { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; }
+  .lock h1 { margin-top: 8px; }
+  .pin-dots { display: flex; gap: 14px; justify-content: center; margin: 22px 0 8px; }
+  .pin-dots span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--brand); }
+  .pin-dots span.on { background: var(--brand); }
+  .pin-msg { min-height: 20px; font-size: 14px; color: var(--bad); }
+  .pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px; justify-content: center; margin-top: 14px; }
+  .pad button { width: 72px; height: 72px; border-radius: 50%; background: var(--card); color: var(--ink); border: 1px solid var(--line); font-size: 26px; font-weight: 500; }
+  .pad button:active { background: var(--ok-bg); }
+  .pad button.fn { background: none; border: 0; font-size: 15px; color: var(--brand-2); }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+  body.privacy #app, body.privacy #modal { visibility: hidden; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .chip { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 500; }
   .bar.warn > span { background: var(--warn); }
@@ -423,6 +436,65 @@ async function loadAllRates(force) {
   return mergeRates(m, k);
 }
 
+// ---------- код-пароль (хранится только на этом устройстве, в виде хеша) ----------
+const PIN_KEY = (uid) => "mf_pin_" + uid;
+function getPin(uid) { try { return JSON.parse(localStorage.getItem(PIN_KEY(uid)) || "null"); } catch (e) { return null; } }
+function removePin(uid) { try { localStorage.removeItem(PIN_KEY(uid)); } catch (e) {} }
+async function hashPin(pin, salt) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: new TextEncoder().encode(salt), iterations: 150000, hash: "SHA-256" }, key, 256);
+  return Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function savePin(uid, pin, timeout) {
+  const salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const rec = { salt, hash: await hashPin(pin, salt), len: pin.length, timeout: timeout ?? 60, fails: 0 };
+  localStorage.setItem(PIN_KEY(uid), JSON.stringify(rec));
+  return rec;
+}
+async function checkPin(uid, pin) { const r = getPin(uid); return !!r && (await hashPin(pin, r.salt)) === r.hash; }
+const LOCK_TIMEOUTS = [[0, "Сразу при сворачивании"], [60, "Через 1 минуту"], [300, "Через 5 минут"], [900, "Через 15 минут"]];
+
+// цифровая клавиатура: onDone(pin) вызывается, когда набрано len цифр (или нажато «Готово» при len = 0)
+function pinPad({ title, subtitle, len, onDone, extra }) {
+  let pin = "";
+  const dots = h("div", { class: "pin-dots" });
+  const msg = h("div", { class: "pin-msg" });
+  const wrap = h("div", {});
+  const maxLen = len || 6;
+  function drawDots() {
+    const n = len || Math.max(4, pin.length);
+    dots.replaceChildren(...Array.from({ length: n }, (_, i) => h("span", { class: i < pin.length ? "on" : "" })));
+  }
+  async function press(d) {
+    if (pin.length >= maxLen) return;
+    pin += d; drawDots(); msg.textContent = "";
+    if (len && pin.length === len) { const p = pin; await finish(p); }
+  }
+  async function finish(p) {
+    const res = await onDone(p);
+    if (res && res.error) {
+      msg.textContent = res.error; pin = ""; drawDots();
+      dots.classList.remove("shake"); void dots.offsetWidth; dots.classList.add("shake");
+      if (navigator.vibrate) navigator.vibrate(120);
+    } else if (res && res.reset) { pin = ""; drawDots(); }
+  }
+  const back = () => { pin = pin.slice(0, -1); drawDots(); };
+  const okBtn = !len && h("button", { type: "button", class: "fn", onclick: () => { if (pin.length < 4) { msg.textContent = "Минимум 4 цифры"; return; } finish(pin); } }, "Готово");
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => h("button", { type: "button", onclick: () => press(d) }, d));
+  const pad = h("div", { class: "pad" }, keys, okBtn || h("div", {}), h("button", { type: "button", onclick: () => press("0") }, "0"),
+    h("button", { type: "button", class: "fn", onclick: back, "aria-label": "Стереть" }, "⌫"));
+  const onKey = (e) => {
+    if (!wrap.isConnected) { document.removeEventListener("keydown", onKey); return; }
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === "Backspace") back();
+    else if (e.key === "Enter" && okBtn) okBtn.click();
+  };
+  document.addEventListener("keydown", onKey);
+  drawDots();
+  wrap.append(h("h2", {}, title), subtitle && h("p", { class: "muted small-text", style: "margin:6px 0 0" }, subtitle), dots, msg, pad, extra || "");
+  return wrap;
+}
+
 // ---------- запуск ----------
 const cfg = window.FIREBASE_CONFIG;
 if (!cfg || !cfg.apiKey || cfg.apiKey.includes("ВСТАВЬТЕ")) {
@@ -455,6 +527,21 @@ async function start() {
   const TX_FROM = `${new Date().getFullYear() - 1}-01-01`;
   const S = fresh();
   S.rates = mergeRates(readCachedRates(), readCachedKase());
+  S.locked = false;
+  let hiddenAt = null, lastActive = Date.now();
+  const lockNow = () => { if (S.user && getPin(S.user.uid) && !S.locked) { S.locked = true; closeModal(); render(); } };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); if (S.user && getPin(S.user.uid)) document.body.classList.add("privacy"); }
+    else {
+      document.body.classList.remove("privacy");
+      const p = S.user && getPin(S.user.uid);
+      if (p && hiddenAt != null && Date.now() - hiddenAt >= (p.timeout || 0) * 1000) lockNow();
+      hiddenAt = null;
+    }
+  });
+  ["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true }));
+  // без действий 10 минут — тоже блокируем
+  setInterval(() => { if (!document.hidden && Date.now() - lastActive > 10 * 60 * 1000) lockNow(); }, 30000);
   let unsubs = [];      // подписки сессии
   let dataUnsubs = [];  // подписки на данные просматриваемого бюджета
   const stopData = () => { dataUnsubs.forEach((u) => u()); dataUnsubs = []; };
@@ -465,6 +552,7 @@ async function start() {
   A.onAuthStateChanged(auth, async (user) => {
     stopAll(); closeModal();
     Object.assign(S, fresh(), { user, rates: S.rates });
+    S.locked = !!(user && getPin(user.uid));
     if (!user) return renderLogin();
     if (!user.emailVerified) return renderVerify();
     try { await enter(); } catch (e) { renderFatal(e); }
@@ -1125,8 +1213,92 @@ async function start() {
   }
 
   // ---------- экраны после входа ----------
+  function renderLock() {
+    const rec = getPin(S.user.uid);
+    if (!rec) { S.locked = false; return render(); }
+    if (root.querySelector(".lock")) return; // экран уже показан — не сбрасываем набранные цифры
+    const forgot = h("button", { class: "link", style: "margin-top:18px", onclick: async () => {
+      if (forgot.dataset.armed !== "1") { forgot.dataset.armed = "1"; forgot.textContent = "Нажмите ещё раз: выйти и войти заново через Google или пароль"; return; }
+      removePin(S.user.uid); await A.signOut(auth);
+    } }, "Забыли код?");
+    show(h("div", { class: "lock" },
+      h("div", { class: "hero", style: "width:100%;max-width:360px;margin-bottom:8px" }, h("h1", {}, "Мои финансы"), h("p", { class: "muted", style: "margin:0" }, S.user.email || "")),
+      pinPad({
+        title: "Введите код-пароль", len: rec.len,
+        onDone: async (pin) => {
+          if (await checkPin(S.user.uid, pin)) {
+            const r = getPin(S.user.uid); r.fails = 0; localStorage.setItem(PIN_KEY(S.user.uid), JSON.stringify(r));
+            S.locked = false; lastActive = Date.now(); render(); return { ok: true };
+          }
+          const r = getPin(S.user.uid); r.fails = (r.fails || 0) + 1; localStorage.setItem(PIN_KEY(S.user.uid), JSON.stringify(r));
+          if (r.fails >= 5) { removePin(S.user.uid); await A.signOut(auth); return { ok: true }; }
+          return { error: `Неверный код. Осталось попыток: ${5 - r.fails}` };
+        },
+        extra: forgot
+      })));
+  }
+
+  // установка / смена кода: ввести дважды
+  function openPinSetup(onSaved) {
+    const rec = getPin(S.user.uid);
+    const body = h("div", { style: "text-align:center" });
+    let first = null;
+    const stepNew = () => body.replaceChildren(pinPad({
+      title: "Придумайте код", subtitle: "4–6 цифр, затем «Готово»",
+      onDone: (pin) => { first = pin; stepRepeat(); return { ok: true }; }
+    }));
+    const stepRepeat = () => body.replaceChildren(pinPad({
+      title: "Повторите код", len: first.length,
+      onDone: async (pin) => {
+        if (pin !== first) { setTimeout(stepNew, 900); return { error: "Коды не совпали, придумайте заново" }; }
+        await savePin(S.user.uid, pin, rec ? rec.timeout : 60);
+        closeModal(); if (onSaved) onSaved(); render(); return { ok: true };
+      }
+    }));
+    const stepOld = () => body.replaceChildren(pinPad({
+      title: "Введите текущий код", len: rec.len,
+      onDone: async (pin) => (await checkPin(S.user.uid, pin)) ? (stepNew(), { ok: true }) : { error: "Неверный код" }
+    }));
+    if (rec) stepOld(); else stepNew();
+    const sheet = h("div", { class: "sheet" }, h("div", { class: "sheet-head" }, h("span", {}), h("button", { type: "button", class: "x", onclick: closeModal, "aria-label": "Закрыть" }, "×")), body);
+    const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
+    modalRoot.replaceChildren(overlay);
+    document.body.style.overflow = "hidden";
+  }
+  function openPinDisable() {
+    const rec = getPin(S.user.uid);
+    const body = h("div", { style: "text-align:center" }, pinPad({
+      title: "Введите код, чтобы отключить", len: rec.len,
+      onDone: async (pin) => {
+        if (!(await checkPin(S.user.uid, pin))) return { error: "Неверный код" };
+        removePin(S.user.uid); closeModal(); S.msg = { cls: "note", text: "Код-пароль отключён." }; render(); return { ok: true };
+      }
+    }));
+    const sheet = h("div", { class: "sheet" }, h("div", { class: "sheet-head" }, h("span", {}), h("button", { type: "button", class: "x", onclick: closeModal }, "×")), body);
+    const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
+    modalRoot.replaceChildren(overlay);
+    document.body.style.overflow = "hidden";
+  }
+  function pinCard() {
+    const rec = getPin(S.user.uid);
+    if (!rec) return h("div", { class: "card" },
+      h("div", { class: "card-head" }, h("h2", {}, "Код-пароль"), h("span", { class: "badge pending" }, "выключен")),
+      h("p", { class: "muted small-text" }, "Без кода любой, кто возьмёт ваш телефон, увидит финансы. Код хранится только на этом устройстве."),
+      h("button", { class: "block", style: "margin-top:4px", onclick: () => openPinSetup(() => { S.msg = { cls: "note", text: "Код-пароль установлен." }; }) }, "Установить код-пароль"));
+    const sel = h("select", { onchange: (e) => { const r = getPin(S.user.uid); r.timeout = Number(e.target.value); localStorage.setItem(PIN_KEY(S.user.uid), JSON.stringify(r)); S.msg = { cls: "note", text: "Сохранено." }; render(); } },
+      LOCK_TIMEOUTS.map(([v, t]) => h("option", { value: String(v), selected: v === (rec.timeout ?? 60) }, t)));
+    return h("div", { class: "card" },
+      h("div", { class: "card-head" }, h("h2", {}, "Код-пароль"), h("span", { class: "badge active" }, "включён")),
+      h("label", { style: "margin-top:0" }, "Блокировать приложение после сворачивания"), sel,
+      h("div", { class: "hint" }, "Также блокируется при каждом открытии и после 10 минут без действий."),
+      h("div", { class: "row", style: "margin-top:12px" },
+        h("button", { class: "small ghost", onclick: () => openPinSetup(() => { S.msg = { cls: "note", text: "Код-пароль изменён." }; }) }, "Изменить код"),
+        h("button", { class: "small danger-ghost", onclick: openPinDisable }, "Отключить")));
+  }
+
   function render() {
     if (!S.user || !S.profile) return;
+    if (S.locked) return renderLock();
     const p = S.profile;
     if (!S.isAdmin && p.status !== "active") {
       const blocked = p.status === "blocked";
@@ -1200,6 +1372,11 @@ async function start() {
         h("div", { class: "row" }, h("div", { class: "grow" }, `Ожидают одобрения: ${waiting}`),
           h("button", { class: "small", onclick: () => { S.tab = "more"; S.moreTab = "users"; render(); } }, "Открыть"))),
       wait,
+      !viewingOther() && !getPin(S.user.uid) && localStorage.getItem("mf_pin_later_" + S.user.uid) !== "1" && h("div", { class: "card", style: "border-color:#f0d9a8;background:#fffaf0" },
+        h("div", { class: "row" }, h("div", { class: "ico" }, "🔒"), h("div", { class: "grow" }, h("b", {}, "Защитите приложение кодом"), h("div", { class: "muted small-text" }, "Чтобы никто с вашего телефона не увидел финансы"))),
+        h("div", { class: "row", style: "margin-top:10px" },
+          h("button", { class: "small", onclick: () => openPinSetup() }, "Установить"),
+          h("button", { class: "small ghost", onclick: () => { localStorage.setItem("mf_pin_later_" + S.user.uid, "1"); render(); } }, "Позже"))),
       !wait && ratesNote(t),
       !wait && empty && h("div", { class: "card" },
         h("h2", { style: "margin-bottom:8px" }, "С чего начать"),
@@ -1625,6 +1802,7 @@ async function start() {
         h("div", { class: "card-head" }, h("h2", {}, "Курсы валют"), S.rates && h("span", { class: "muted small-text" }, "на " + fmtDay(S.rates.date))),
         h("p", { class: "muted small-text" }, "Тенге к доллару, евро, рублю, юаню и дирхаму — средневзвешенные курсы KASE, обновляются каждые 30 минут в торговые часы. Остальные валюты пересчитываются по рыночным данным."),
         h("button", { class: "ghost block", style: "margin-top:4px", onclick: refreshRates }, "Обновить сейчас"), rbox),
+      pinCard(),
       h("div", { class: "card" }, uidBlock()),
       h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")
     ];
