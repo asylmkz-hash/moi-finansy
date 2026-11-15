@@ -791,7 +791,7 @@ async function start() {
     if (!date) return null;
     const a = parseYmd(today()), b = parseYmd(date);
     if (b <= a) return 0;
-    return Math.max(1, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + (b.getDate() >= a.getDate() ? 0 : -1) + 1);
+    return Math.max(1, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + (b.getDate() >= a.getDate() ? 0 : -1));
   }
   function goalInfo(g) {
     const saved = goalSaved(g), target = g.target || 0;
