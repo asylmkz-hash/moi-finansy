@@ -106,6 +106,12 @@
   .period-nav .lbl { flex: 1; text-align: center; font-weight: 700; }
   .period-nav button { background: var(--card); color: var(--brand); border: 1px solid var(--line); padding: 8px 14px; }
   .bar.over > span { background: var(--bad); }
+  .goal { border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 10px; background: var(--card); }
+  .goal .big-ico { width: 44px; height: 44px; border-radius: 12px; background: var(--ok-bg); display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
+  .goal .bar { height: 10px; margin-top: 10px; }
+  .goal.done { border-color: #9fd3b4; background: #f3fbf6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 500; }
   .bar.warn > span { background: var(--warn); }
 </style>
 </head>
@@ -152,9 +158,14 @@ const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "�
 const MONTHS_G = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const MONTHS_S = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 const WDAYS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const GOAL_CATS = {
+  trip: ["Поездка", "✈️"], kids: ["Дети", "👶"], home: ["Жильё", "🏠"], car: ["Авто", "🚗"], pension: ["Пенсия", "🧓"],
+  business: ["Бизнес", "💼"], education: ["Образование", "🎓"], hajj: ["Хадж / Умра", "🕋"], toy: ["Той / свадьба", "💍"],
+  reserve: ["Подушка безопасности", "🛟"], tech: ["Техника", "📱"], other: ["Другое", "🎯"]
+};
 const TX_TYPES = { expense: "Расход", income: "Доход", transfer: "Перевод" };
 const STATUS = { active: "Активен", pending: "Ожидает", blocked: "Отключён" };
-const SECTION_NAMES = { accounts: "счёт", assets: "актив", liabilities: "обязательство", transactions: "операцию", settings: "лимиты" };
+const SECTION_NAMES = { goals: "цель", accounts: "счёт", assets: "актив", liabilities: "обязательство", transactions: "операцию", settings: "лимиты" };
 
 const AUTH_ERRORS = {
   "auth/invalid-credential": "Неверный email или пароль.",
@@ -436,7 +447,7 @@ async function start() {
 
   const fresh = () => ({
     user: null, profile: null, isAdmin: false, tab: "home", users: [], audit: [], msg: null, armed: null,
-    viewUid: null, viewProfile: null, data: { accounts: [], assets: [], liabilities: [] }, loaded: {}, dataErr: null,
+    viewUid: null, viewProfile: null, data: { accounts: [], assets: [], liabilities: [], goals: [] }, loaded: {}, dataErr: null,
     tx: [], budget: {}, archive: {}, capTab: "assets", moreTab: "profile", txFilter: "expense", txShow: 60,
     rep: { kind: "month", anchor: today(), from: ymd(new Date(new Date().getFullYear(), 0, 1)), to: today() }
   });
@@ -498,7 +509,7 @@ async function start() {
     stopData();
     S.viewUid = uid;
     S.viewProfile = uid === S.user.uid ? S.profile : (S.users.find((x) => x.id === uid) || null);
-    S.data = { accounts: [], assets: [], liabilities: [] };
+    S.data = { accounts: [], assets: [], liabilities: [], goals: [] };
     S.loaded = {}; S.dataErr = null; S.tx = []; S.budget = {}; S.archive = {}; S.txShow = 60;
     dataUnsubs.push(F.onSnapshot(F.query(F.collection(db, "users", uid, "transactions"), F.where("date", ">=", TX_FROM)), (q) => {
       S.tx = q.docs.map((d) => ({ id: d.id, ...d.data() }))
@@ -510,7 +521,7 @@ async function start() {
       S.budget = (d.exists && d.exists() ? d.data() : null) || {};
       render();
     }, () => {}));
-    for (const sec of ["accounts", "assets", "liabilities"]) {
+    for (const sec of ["accounts", "assets", "liabilities", "goals"]) {
       dataUnsubs.push(F.onSnapshot(F.collection(db, "users", uid, sec), (q) => {
         S.data[sec] = q.docs.map((d) => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
@@ -631,9 +642,9 @@ async function start() {
   const catList = (type) => { const base = type === "income" ? INC_CATS : EXP_CATS; return [...base, ...usedCats(type).filter((c) => !base.includes(c))]; };
   const accName = (id) => { const a = S.data.accounts.find((x) => x.id === id); return a ? a.name : ""; };
 
-  function openTxForm(item, presetType) {
+  function openTxForm(item, presetType, preset) {
     const isNew = !item;
-    const d = { type: presetType || "expense", date: today(), currency: baseCur(), ...(item || {}) };
+    const d = { type: presetType || "expense", date: today(), currency: baseCur(), ...(preset || {}), ...(item || {}) };
     let confirmDel = false;
     const box = h("div", {});
     const say = (cls, t) => box.replaceChildren(h("div", { class: cls }, t));
@@ -768,6 +779,130 @@ async function start() {
     const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
     modalRoot.replaceChildren(overlay);
     document.body.style.overflow = "hidden";
+  }
+
+  // ---------- накопления ----------
+  function goalSaved(g) {
+    const acc = g.accountId && S.data.accounts.find((a) => a.id === g.accountId);
+    if (acc) return convert(acc.balance || 0, acc.currency, g.currency) || 0;
+    return g.saved || 0;
+  }
+  function monthsUntil(date) {
+    if (!date) return null;
+    const a = parseYmd(today()), b = parseYmd(date);
+    if (b <= a) return 0;
+    return Math.max(1, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + (b.getDate() >= a.getDate() ? 0 : -1) + 1);
+  }
+  function goalInfo(g) {
+    const saved = goalSaved(g), target = g.target || 0;
+    const left = Math.max(0, target - saved);
+    const pct = target > 0 ? Math.min(100, saved / target * 100) : 0;
+    const months = monthsUntil(g.deadline);
+    const perMonth = months ? left / months : null;
+    return { saved, target, left, pct, months, perMonth, done: target > 0 && saved >= target };
+  }
+  async function saveGoal(id, data) {
+    const col = F.collection(db, "users", S.viewUid, "goals");
+    if (id) { await F.updateDoc(F.doc(col, id), { ...data, updatedAt: F.serverTimestamp(), updatedBy: S.user.uid }); await logEdit("goals", id, "update", data.name); }
+    else { const ref = await F.addDoc(col, { ...data, history: data.saved ? [{ d: today(), v: data.saved }] : [], createdAt: F.serverTimestamp(), createdBy: S.user.uid }); await logEdit("goals", ref.id, "create", data.name); }
+  }
+
+  function openGoalForm(goal, presetCat) {
+    const isNew = !goal;
+    const d = { category: presetCat || "trip", currency: baseCur(), ...(goal || {}) };
+    if (isNew && presetCat) d.name = GOAL_CATS[presetCat][0];
+    let confirmDel = false;
+    const box = h("div", {});
+    const say = (cls, t) => box.replaceChildren(h("div", { class: cls }, t));
+    const el = {};
+    const body = h("div", {});
+    function read() {
+      d.category = el.category.value; d.name = el.name.value.trim(); d.target = parseNum(el.target.value); d.currency = el.currency.value;
+      d.deadline = el.deadline.value; d.accountId = el.account.value || null; d.note = el.note.value.trim();
+      if (el.saved) d.saved = parseNum(el.saved.value);
+    }
+    function draw() {
+      body.replaceChildren();
+      el.category = h("select", {}, Object.entries(GOAL_CATS).map(([k, [t, i]]) => h("option", { value: k, selected: k === d.category }, `${i} ${t}`)));
+      el.category.addEventListener("change", () => { const prevName = GOAL_CATS[d.category] && GOAL_CATS[d.category][0]; read(); if (!d.name || d.name === prevName) d.name = GOAL_CATS[d.category][0]; draw(); });
+      el.name = h("input", { type: "text", placeholder: "Например: Отпуск в Турции", value: d.name || "" });
+      el.target = h("input", { type: "text", inputmode: "decimal", placeholder: "0", value: d.target == null ? "" : String(d.target) });
+      el.currency = h("select", {}, CURRENCIES.map(([c]) => h("option", { value: c, selected: c === d.currency }, c)));
+      el.deadline = h("input", { type: "date", value: d.deadline || "" });
+      el.account = h("select", {}, [h("option", { value: "" }, "Не привязывать — вести сумму вручную"),
+        ...S.data.accounts.map((a) => h("option", { value: a.id, selected: a.id === d.accountId }, `${a.name} · ${fmtMoney(a.balance, a.currency)}`))]);
+      el.account.addEventListener("change", () => { read(); draw(); });
+      el.note = h("textarea", { placeholder: "" }); el.note.value = d.note || "";
+      body.append(
+        h("label", { style: "margin-top:0" }, "На что копим"), el.category,
+        h("label", {}, "Название *"), el.name,
+        h("label", {}, "Нужная сумма *"), h("div", { class: "grid-amt" }, el.target, el.currency),
+        h("label", {}, "К какой дате"), el.deadline,
+        h("label", {}, "Где лежат деньги"), el.account,
+        h("div", { class: "hint" }, d.accountId ? "Накоплено = остаток этого счёта. Пополняйте его переводом — прогресс обновится сам." : "Если копите на отдельном счёте или депозите — выберите его, суммы будут считаться автоматически."));
+      if (!d.accountId) {
+        el.saved = h("input", { type: "text", inputmode: "decimal", placeholder: "0", value: d.saved == null ? "" : String(d.saved) });
+        body.append(h("label", {}, `Уже накоплено, ${d.currency}`), el.saved);
+      } else delete el.saved;
+      body.append(h("label", {}, "Заметка"), el.note);
+    }
+    draw();
+    async function submit(ev) {
+      ev.preventDefault(); read();
+      if (!d.name) return say("err", "Введите название цели.");
+      if (d.target == null || Number.isNaN(d.target) || d.target <= 0) return say("err", "Введите нужную сумму больше нуля.");
+      if (el.saved && Number.isNaN(d.saved)) return say("err", "«Уже накоплено»: введите число.");
+      const data = { category: d.category, name: d.name, target: d.target, currency: d.currency, deadline: d.deadline || null, accountId: d.accountId || null, note: d.note || "" };
+      if (!d.accountId) data.saved = d.saved || 0;
+      const btn = ev.submitter; if (btn) btn.disabled = true;
+      try { await saveGoal(goal && goal.id, data); closeModal(); } catch (e) { say("err", errText(e)); if (btn) btn.disabled = false; }
+    }
+    async function del() {
+      if (!confirmDel) { confirmDel = true; delBtn.textContent = "Точно удалить цель? Нажмите ещё раз"; return; }
+      delBtn.disabled = true;
+      try { await F.deleteDoc(F.doc(db, "users", S.viewUid, "goals", goal.id)); await logEdit("goals", goal.id, "delete", goal.name); closeModal(); }
+      catch (e) { say("err", errText(e)); delBtn.disabled = false; }
+    }
+    const delBtn = !isNew && h("button", { type: "button", class: "danger-ghost block", onclick: del }, "Удалить цель");
+    const sheet = h("form", { class: "sheet", onsubmit: submit },
+      h("div", { class: "sheet-head" }, h("h2", {}, isNew ? "Новая цель" : "Цель"), h("button", { type: "button", class: "x", onclick: closeModal, "aria-label": "Закрыть" }, "×")),
+      body, box, h("button", { type: "submit", class: "block" }, isNew ? "Создать цель" : "Сохранить"), delBtn);
+    const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
+    modalRoot.replaceChildren(overlay);
+    document.body.style.overflow = "hidden";
+  }
+
+  // пополнить (sign = 1) или снять (sign = -1) с цели, которая ведётся вручную
+  function openContribForm(goal, sign) {
+    if (goal.accountId) {
+      return sign > 0 ? openTxForm(null, "transfer", { toAccountId: goal.accountId, note: `На цель «${goal.name}»` })
+                      : openTxForm(null, "transfer", { accountId: goal.accountId, note: `С цели «${goal.name}»` });
+    }
+    const box = h("div", {});
+    const amount = h("input", { type: "text", inputmode: "decimal", placeholder: "0" });
+    const date = h("input", { type: "date", value: today() });
+    async function submit(ev) {
+      ev.preventDefault();
+      const v = parseNum(amount.value);
+      if (v == null || Number.isNaN(v) || v <= 0) return box.replaceChildren(h("div", { class: "err" }, "Введите сумму больше нуля."));
+      const cur = goal.saved || 0;
+      const next = Math.max(0, cur + sign * v);
+      const hist = (Array.isArray(goal.history) ? goal.history.slice(-99) : []);
+      hist.push({ d: date.value || today(), v: sign * v });
+      try {
+        await F.updateDoc(F.doc(db, "users", S.viewUid, "goals", goal.id), { saved: next, history: hist, updatedAt: F.serverTimestamp() });
+        await logEdit("goals", goal.id, "update", `${goal.name}: ${sign > 0 ? "+" : "−"}${fmtMoney(v, goal.currency)}`);
+        closeModal();
+      } catch (e) { box.replaceChildren(h("div", { class: "err" }, errText(e))); }
+    }
+    const sheet = h("form", { class: "sheet", onsubmit: submit },
+      h("div", { class: "sheet-head" }, h("h2", {}, `${sign > 0 ? "Пополнить" : "Снять с"} «${goal.name}»`), h("button", { type: "button", class: "x", onclick: closeModal }, "×")),
+      h("label", { style: "margin-top:0" }, `Сумма, ${goal.currency}`), amount, h("label", {}, "Дата"), date, box,
+      h("button", { type: "submit", class: "block" }, sign > 0 ? "Пополнить" : "Снять"));
+    const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
+    modalRoot.replaceChildren(overlay);
+    document.body.style.overflow = "hidden";
+    setTimeout(() => amount.focus(), 50);
   }
 
   // операции за период: из памяти или подгрузка старых
@@ -1084,6 +1219,7 @@ async function start() {
         h("div", { class: "row muted" }, h("div", { class: "grow" }, "Платежи в месяц"), h("div", { class: "num" }, fmtMoney(t.monthly, base, 0))),
         t.assets > 0 && h("div", { class: "row muted" }, h("div", { class: "grow" }, "Долги к активам"), h("div", { class: "num" }, Math.round(t.debt / t.assets * 100) + "%"))),
       !wait && monthCard(),
+      !wait && goalsHomeCard(),
       ratesCard()
     ];
   }
@@ -1280,10 +1416,77 @@ async function start() {
     ];
   }
 
+  function goalCard(g) {
+    const base = baseCur();
+    const i = goalInfo(g);
+    const [catName, ico] = GOAL_CATS[g.category] || GOAL_CATS.other;
+    const accName2 = g.accountId ? accName(g.accountId) : "";
+    let plan = "";
+    if (i.done) plan = "🎉 Цель достигнута";
+    else if (i.months === 0) plan = `Срок прошёл · осталось ${fmtMoney(i.left, g.currency, 0)}`;
+    else if (i.perMonth != null) plan = `Нужно откладывать ${fmtMoney(i.perMonth, g.currency, 0)} в месяц`;
+    const conv = g.currency !== base ? convert(i.saved, g.currency, base) : null;
+    return h("div", { class: "goal" + (i.done ? " done" : "") },
+      h("div", { class: "row tap", onclick: () => openGoalForm(g) },
+        h("div", { class: "big-ico" }, ico),
+        h("div", { class: "grow" },
+          h("div", { class: "ellipsis", style: "font-weight:700" }, g.name),
+          h("div", { class: "muted small-text ellipsis" }, [catName, g.deadline ? "до " + fmtDay(g.deadline) : "", accName2 ? "на счёте «" + accName2 + "»" : ""].filter(Boolean).join(" · "))),
+        h("div", { class: "amt" }, h("b", { class: "num" }, Math.round(i.pct) + "%"))),
+      h("div", { class: "bar" }, h("span", { style: `width:${Math.max(2, i.pct)}%;${i.done ? "background:var(--ok)" : ""}` })),
+      h("div", { class: "row small-text", style: "margin-top:6px" },
+        h("div", { class: "grow" }, h("b", { class: "num" }, fmtMoney(i.saved, g.currency, 0)), h("span", { class: "muted" }, " из " + fmtMoney(i.target, g.currency, 0))),
+        !i.done && h("div", { class: "muted num" }, "осталось " + fmtMoney(i.left, g.currency, 0))),
+      conv != null && h("div", { class: "muted small-text num" }, "≈ " + fmtMoney(conv, base, 0)),
+      plan && h("div", { class: "small-text", style: `margin-top:6px;color:${i.done ? "var(--ok)" : i.months === 0 ? "var(--bad)" : "var(--brand-2)"}` }, plan),
+      h("div", { class: "row", style: "margin-top:10px" },
+        h("button", { class: "small", onclick: () => openContribForm(g, 1) }, "+ Пополнить"),
+        h("button", { class: "small ghost", onclick: () => openContribForm(g, -1) }, "Снять")));
+  }
+
+  function viewGoals() {
+    const wait = loadingOrError();
+    if (wait) return wait;
+    if (!S.loaded.goals) return h("p", { class: "muted center", style: "padding:20px" }, "Загружаю данные…");
+    const base = baseCur();
+    const goals = [...S.data.goals].sort((a, b) => goalInfo(a).done - goalInfo(b).done || (a.deadline || "9999").localeCompare(b.deadline || "9999"));
+    const totSaved = sum(goals.map((g) => convert(goalSaved(g), g.currency, base) || 0));
+    const totTarget = sum(goals.map((g) => convert(g.target || 0, g.currency, base) || 0));
+    const totMonthly = sum(goals.map((g) => { const i = goalInfo(g); return i.perMonth && !i.done ? convert(i.perMonth, g.currency, base) || 0 : 0; }));
+    const chips = h("div", { class: "chips" }, Object.entries(GOAL_CATS).filter(([k]) => k !== "other").map(([k, [t, i]]) => h("button", { class: "chip", onclick: () => openGoalForm(null, k) }, `${i} ${t}`)));
+    return [
+      h("div", { class: "row", style: "margin-bottom:4px" }, h("h1", { class: "grow" }, "Накопления"), h("button", { class: "add", onclick: () => openGoalForm() }, "+ Новая цель")),
+      goals.length ? [
+        h("div", { class: "card" },
+          h("div", { class: "row" }, h("div", { class: "grow muted small-text" }, "Накоплено на все цели"), h("div", { class: "muted small-text" }, totTarget ? Math.round(totSaved / totTarget * 100) + "%" : "")),
+          h("div", { class: "row", style: "margin-top:2px" }, h("b", { class: "num", style: "font-size:20px" }, fmtMoney(totSaved, base, 0)), h("span", { class: "muted num" }, " из " + fmtMoney(totTarget, base, 0))),
+          h("div", { class: "bar" }, h("span", { style: `width:${totTarget ? Math.min(100, totSaved / totTarget * 100) : 0}%` })),
+          totMonthly > 0 && h("div", { class: "small-text", style: "margin-top:8px;color:var(--brand-2)" }, `Чтобы успеть к срокам, откладывайте ≈ ${fmtMoney(totMonthly, base, 0)} в месяц`)),
+        goals.map(goalCard),
+        h("p", { class: "muted small-text", style: "margin-top:14px" }, "Цели, привязанные к счёту, уже входят в капитал через этот счёт. Цели без счёта — это отметка, сколько из ваших денег отложено, в капитал отдельно не добавляются.")
+      ] : h("div", { class: "card" },
+        h("h2", { style: "margin-bottom:6px" }, "На что копите?"),
+        h("p", { class: "muted small-text", style: "margin:0" }, "Создайте цель — приложение покажет прогресс и сколько откладывать в месяц, чтобы успеть к сроку."),
+        chips)
+    ];
+  }
+
+  function goalsHomeCard() {
+    if (!S.loaded.goals || !S.data.goals.length) return null;
+    const base = baseCur();
+    const goals = S.data.goals.map((g) => ({ g, i: goalInfo(g) })).sort((a, b) => a.i.done - b.i.done || b.i.pct - a.i.pct).slice(0, 3);
+    const totSaved = sum(S.data.goals.map((g) => convert(goalSaved(g), g.currency, base) || 0));
+    return h("div", { class: "card tap", onclick: () => { S.tab = "capital"; S.capTab = "goals"; render(); window.scrollTo(0, 0); } },
+      h("div", { class: "card-head" }, h("h2", {}, "Накопления"), h("span", { class: "num" }, fmtMoney(totSaved, base, 0))),
+      goals.map(({ g, i }) => h("div", { style: "margin-top:8px" },
+        h("div", { class: "row small-text" }, h("span", {}, (GOAL_CATS[g.category] || GOAL_CATS.other)[1]), h("div", { class: "grow ellipsis" }, g.name), h("span", { class: "num" }, Math.round(i.pct) + "%")),
+        h("div", { class: "bar" }, h("span", { style: `width:${Math.max(2, i.pct)}%;${i.done ? "background:var(--ok)" : ""}` })))));
+  }
+
   function viewCapital() {
     return [
-      h("div", { class: "seg" }, [["assets", "Активы"], ["debts", "Долги"]].map(([k, t]) => h("button", { class: S.capTab === k ? "on" : "", onclick: () => { S.capTab = k; render(); } }, t))),
-      S.capTab === "debts" ? viewDebts() : viewAssets()
+      h("div", { class: "seg" }, [["assets", "Активы"], ["debts", "Долги"], ["goals", "Накопления"]].map(([k, t]) => h("button", { class: S.capTab === k ? "on" : "", onclick: () => { S.capTab = k; render(); } }, t))),
+      S.capTab === "debts" ? viewDebts() : S.capTab === "goals" ? viewGoals() : viewAssets()
     ];
   }
   function viewMore() {
