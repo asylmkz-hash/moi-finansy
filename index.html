@@ -32,6 +32,9 @@
   .hero .split { display: flex; gap: 12px; }
   .hero .split > div { flex: 1; background: rgba(255,255,255,.08); border-radius: 12px; padding: 10px 12px; }
   .hero .split b { display: block; font-size: 17px; }
+  .hero .alt { font-size: 18px; font-weight: 600; color: #d6ebe7; margin: -8px 0 12px; }
+  .hero .alt-s { font-size: 13px; color: #b9d3cf; margin-top: 2px; }
+  .hero .rate-line { font-size: 12px; color: #b9d3cf; margin-top: 10px; }
   label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
   input, select, textarea { width: 100%; padding: 12px; font: inherit; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
   textarea { min-height: 70px; resize: vertical; }
@@ -71,7 +74,7 @@
   .empty { text-align: center; padding: 14px 0 6px; color: var(--muted); font-size: 14px; }
   nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
   nav .inner { max-width: 640px; margin: 0 auto; display: flex; }
-  nav button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 14px 2px; font-weight: 500; font-size: 13px; }
+  nav button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 12px 2px; font-weight: 500; font-size: 12px; line-height: 1.2; }
   nav button.on { color: var(--brand); font-weight: 700; box-shadow: inset 0 3px 0 var(--brand); }
   .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 16px 0 4px; }
   .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -376,6 +379,39 @@ async function fetchRates(force) {
   return cached;
 }
 
+// ---------- курсы KASE (файл rates.json обновляется GitHub Actions) ----------
+const KASE_URLS = ["https://raw.githubusercontent.com/asylmkz-hash/moi-finansy/main/rates.json", "rates.json"];
+function readCachedKase() {
+  try { return JSON.parse(localStorage.getItem("mf_kase") || "null"); } catch (e) { return null; }
+}
+async function fetchKase() {
+  for (const u of KASE_URLS) {
+    try {
+      const r = await fetch(u + "?t=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (j && j.kzt && j.kzt.USD && j.kzt.USD.rate > 0) {
+        try { localStorage.setItem("mf_kase", JSON.stringify(j)); } catch (e) {}
+        return j;
+      }
+    } catch (e) { /* следующий адрес */ }
+  }
+  return readCachedKase();
+}
+// курсы KASE (тенге за 1 единицу) переводим в общую таблицу «единиц за 1 доллар»
+function mergeRates(market, kase) {
+  if (!kase || !kase.kzt || !kase.kzt.USD) return market;
+  const rates = { ...((market && market.rates) || {}) };
+  const usd = kase.kzt.USD.rate;
+  rates.USD = 1; rates.KZT = usd;
+  for (const [c, v] of Object.entries(kase.kzt)) if (c !== "USD" && v && v.rate > 0) rates[c] = usd / v.rate;
+  return { ...(market || {}), rates, date: kase.kzt.USD.date, marketDate: market && market.date, kase };
+}
+async function loadAllRates(force) {
+  const [m, k] = await Promise.all([fetchRates(force), fetchKase()]);
+  return mergeRates(m, k);
+}
+
 // ---------- запуск ----------
 const cfg = window.FIREBASE_CONFIG;
 if (!cfg || !cfg.apiKey || cfg.apiKey.includes("ВСТАВЬТЕ")) {
@@ -407,13 +443,13 @@ async function start() {
   // операции слушаем с 1 января прошлого года; более ранние подгружаются по запросу
   const TX_FROM = `${new Date().getFullYear() - 1}-01-01`;
   const S = fresh();
-  S.rates = readCachedRates();
+  S.rates = mergeRates(readCachedRates(), readCachedKase());
   let unsubs = [];      // подписки сессии
   let dataUnsubs = [];  // подписки на данные просматриваемого бюджета
   const stopData = () => { dataUnsubs.forEach((u) => u()); dataUnsubs = []; };
   const stopAll = () => { stopData(); unsubs.forEach((u) => u()); unsubs = []; };
 
-  fetchRates(false).then((r) => { if (r) { S.rates = r; render(); } });
+  loadAllRates(false).then((r) => { if (r) { S.rates = r; render(); } });
 
   A.onAuthStateChanged(auth, async (user) => {
     stopAll(); closeModal();
@@ -493,6 +529,18 @@ async function start() {
     const r = S.rates && S.rates.rates;
     if (!r || !r[cur] || !r[base]) return null;
     return amount / r[cur] * r[base];
+  }
+  function convert(amount, from, to) {
+    if (amount == null || !Number.isFinite(amount)) return null;
+    if (from === to) return amount;
+    const r = S.rates && S.rates.rates;
+    if (!r || !r[from] || !r[to]) return null;
+    return amount / r[from] * r[to];
+  }
+  function rateNote() {
+    const k = S.rates && S.rates.kase;
+    if (!k) return S.rates && S.rates.rates && S.rates.rates.KZT ? `Курс: 1 $ = ${fmtMoney(S.rates.rates.KZT, "KZT", 2)} (рыночный, на ${fmtDay(S.rates.date)})` : "";
+    return `Курс KASE на ${fmtDay(k.kzt.USD.date)}: 1 $ = ${fmtMoney(k.kzt.USD.rate, "KZT", 2)}`;
   }
   function assetValue(a) {
     const u = UNIT_CATS[a.category];
@@ -954,7 +1002,7 @@ async function start() {
           uidBlock(),
           h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")));
     }
-    const tabs = [["home", "Главная"], ["expenses", "Расходы"], ["reports", "Отчёты"], ["capital", "Капитал"], ["more", "Ещё"]];
+    const tabs = [["home", "Главная"], ["expenses", "Доход/расходы"], ["reports", "Отчёты"], ["capital", "Капитал"], ["more", "Ещё"]];
     let body;
     if (S.tab === "more") body = viewMore();
     else if (S.tab === "capital") body = [banner(), viewCapital()];
@@ -997,6 +1045,8 @@ async function start() {
     const cats = [["money", "Деньги на счетах", t.money], ...Object.keys(ASSET_CATS).map((k) => [k, ASSET_CATS[k], t.byCat[k] || 0])]
       .filter((c) => c[2] > 0).sort((a, b) => b[2] - a[2]);
     const maxCat = Math.max(1, ...cats.map((c) => c[2]));
+    // рядом с основной валютой всегда показываем тенге и доллары
+    const alt = ["KZT", "USD"].filter((c) => c !== base);
 
     return [
       h("div", { class: "hero" },
@@ -1004,9 +1054,13 @@ async function start() {
           S.isAdmin && !viewingOther() && h("span", { class: "badge", style: "background:#fff;color:var(--brand)" }, "Главный")),
         h("div", { class: "muted", style: "margin-top:10px" }, "Чистый капитал"),
         h("div", { class: "big num" }, wait ? "…" : fmtMoney(t.net, base, 0)),
+        !wait && alt.length > 0 && h("div", { class: "alt num" }, alt.map((c) => fmtMoney(convert(t.net, base, c), c, 0)).join("  ·  ")),
         h("div", { class: "split" },
-          h("div", {}, h("span", { class: "muted small-text" }, "Активы"), h("b", { class: "num" }, wait ? "…" : fmtMoney(t.assets, base, 0))),
-          h("div", {}, h("span", { class: "muted small-text" }, "Долги"), h("b", { class: "num" }, wait ? "…" : fmtMoney(t.debt, base, 0))))),
+          h("div", {}, h("span", { class: "muted small-text" }, "Активы"), h("b", { class: "num" }, wait ? "…" : fmtMoney(t.assets, base, 0)),
+            !wait && alt.map((c) => h("div", { class: "alt-s num" }, fmtMoney(convert(t.assets, base, c), c, 0)))),
+          h("div", {}, h("span", { class: "muted small-text" }, "Долги"), h("b", { class: "num" }, wait ? "…" : fmtMoney(t.debt, base, 0)),
+            !wait && alt.map((c) => h("div", { class: "alt-s num" }, fmtMoney(convert(t.debt, base, c), c, 0))))),
+        h("div", { class: "rate-line" }, rateNote())),
       S.isAdmin && waiting > 0 && !viewingOther() && h("div", { class: "card" },
         h("div", { class: "row" }, h("div", { class: "grow" }, `Ожидают одобрения: ${waiting}`),
           h("button", { class: "small", onclick: () => { S.tab = "more"; S.moreTab = "users"; render(); } }, "Открыть"))),
@@ -1126,7 +1180,7 @@ async function start() {
     for (const t of shown) { const g = groups[groups.length - 1]; if (g && g.date === t.date) g.items.push(t); else groups.push({ date: t.date, items: [t] }); }
 
     return [
-      h("h1", {}, "Расходы и доходы"),
+      h("h1", {}, "Доходы и расходы"),
       h("div", { class: "kpis" },
         h("div", { class: "kpi" }, h("div", { class: "muted small-text" }, "Сегодня"), h("div", { class: "v num neg" }, fmtMoney(sumIn(t0, t0, "expense"), base, 0))),
         h("div", { class: "kpi" }, h("div", { class: "muted small-text" }, "Эта неделя"), h("div", { class: "v num neg" }, fmtMoney(sumIn(wk.from, wk.to, "expense"), base, 0))),
@@ -1244,9 +1298,11 @@ async function start() {
     const base = baseCur();
     const r = S.rates && S.rates.rates;
     if (!r) return h("div", { class: "card muted small-text" }, "Курсы валют загружаются…");
-    const shown = ["USD", "EUR", "CNY", "RUB"].filter((c) => c !== base && r[c] && r[base]);
+    const shown = ["USD", "EUR", "CNY", "RUB", "AED"].filter((c) => c !== base && r[c] && r[base]);
+    const k = S.rates.kase;
     return h("div", { class: "card" },
-      h("div", { class: "card-head" }, h("h2", {}, "Курсы"), h("span", { class: "muted small-text" }, "на " + fmtDay(S.rates.date))),
+      h("div", { class: "card-head" }, h("h2", {}, k ? "Курсы KASE" : "Курсы"), h("span", { class: "muted small-text" }, "на " + fmtDay(S.rates.date))),
+      k && h("p", { class: "muted small-text", style: "margin:0 0 6px" }, "Средневзвешенный курс биржевых торгов"),
       shown.map((c) => h("div", { class: "row small-text" }, h("div", { class: "grow" }, `1 ${c}`), h("div", { class: "num" }, fmtMoney(r[base] / r[c], base, 2)))));
   }
 
@@ -1350,7 +1406,7 @@ async function start() {
     const rbox = h("div", {});
     async function refreshRates(ev) {
       const b = ev.currentTarget; b.disabled = true; b.textContent = "Обновляю…";
-      const r = await fetchRates(true);
+      const r = await loadAllRates(true);
       if (r) { S.rates = r; S.msg = { cls: "note", text: `Курсы обновлены на ${fmtDay(r.date)}.` }; }
       else S.msg = { cls: "err", text: "Не удалось загрузить курсы. Проверьте интернет." };
       render();
@@ -1364,7 +1420,7 @@ async function start() {
         h("button", { class: "block", type: "submit" }, "Сохранить")),
       h("div", { class: "card" },
         h("div", { class: "card-head" }, h("h2", {}, "Курсы валют"), S.rates && h("span", { class: "muted small-text" }, "на " + fmtDay(S.rates.date))),
-        h("p", { class: "muted small-text" }, "Курсы берутся из открытых источников и обновляются автоматически раз в 6 часов."),
+        h("p", { class: "muted small-text" }, "Тенге к доллару, евро, рублю, юаню и дирхаму — средневзвешенные курсы KASE, обновляются каждые 30 минут в торговые часы. Остальные валюты пересчитываются по рыночным данным."),
         h("button", { class: "ghost block", style: "margin-top:4px", onclick: refreshRates }, "Обновить сейчас"), rbox),
       h("div", { class: "card" }, uidBlock()),
       h("button", { class: "ghost block", onclick: () => A.signOut(auth) }, "Выйти")
