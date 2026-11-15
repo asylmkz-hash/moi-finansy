@@ -1,0 +1,38 @@
+name: Курсы KASE
+
+on:
+  schedule:
+    # каждые 30 минут в торговые часы KASE (10:00–17:30 по Астане = 05:00–12:30 UTC), пн–пт
+    - cron: "*/30 5-12 * * 1-5"
+    # контрольный запуск вечером и утром
+    - cron: "10 14 * * 1-5"
+    - cron: "10 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kase-rates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Получить курсы с KASE
+        run: node scripts/kase-rates.mjs
+      - name: Сохранить, если изменились
+        run: |
+          if git diff --quiet -- rates.json && git ls-files --error-unmatch rates.json >/dev/null 2>&1; then
+            echo "Без изменений"; exit 0
+          fi
+          git config user.name "kase-rates-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rates.json
+          git commit -m "Курсы KASE $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
