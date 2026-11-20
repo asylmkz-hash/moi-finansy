@@ -1,11 +1,11 @@
 {
   "source": "KASE",
   "note": "Средневзвешенные курсы биржевых торгов KASE",
-  "updated": "2026-11-19T14:16:30.477Z",
+  "updated": "2026-11-20T11:26:08.414Z",
   "kzt": {
     "USD": {
-      "rate": 449.13,
-      "date": "2026-11-19",
+      "rate": 455,
+      "date": "2026-11-20",
       "symbol": "USDKZT_TOM",
       "kind": "weighted"
     },
