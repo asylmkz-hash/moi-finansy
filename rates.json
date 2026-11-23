@@ -1,35 +1,35 @@
 {
   "source": "KASE",
   "note": "Средневзвешенные курсы биржевых торгов KASE",
-  "updated": "2026-11-22T11:11:13.512Z",
+  "updated": "2026-11-23T12:21:18.657Z",
   "kzt": {
     "USD": {
-      "rate": 455.32,
-      "date": "2026-11-20",
+      "rate": 455.09,
+      "date": "2026-11-23",
       "symbol": "USDKZT_TOM",
       "kind": "weighted"
     },
     "EUR": {
-      "rate": 499.88,
-      "date": "2026-11-20",
+      "rate": 498.76,
+      "date": "2026-11-23",
       "symbol": "EURKZT_TOM",
       "kind": "weighted"
     },
     "RUB": {
-      "rate": 5.5542,
-      "date": "2026-11-20",
+      "rate": 5.5614,
+      "date": "2026-11-23",
       "symbol": "RUBKZT_TOM",
       "kind": "weighted"
     },
     "CNY": {
-      "rate": 68.1176,
-      "date": "2026-11-20",
+      "rate": 68.2711,
+      "date": "2026-11-23",
       "symbol": "CNYKZT_TOM",
       "kind": "weighted"
     },
     "AED": {
-      "rate": 123.98,
-      "date": "2026-11-20",
+      "rate": 123.41,
+      "date": "2026-11-23",
       "symbol": "AEDKZT_TOM",
       "kind": "close"
     }
