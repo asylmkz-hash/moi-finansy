@@ -1,7 +1,7 @@
 {
   "source": "KASE",
-  "note": "Средневзвешенные курсы биржевых торгов KASE",
-  "updated": "2026-11-23T12:21:18.657Z",
+  "note": "Средневзвешенные курсы биржевых торгов KASE; цены бумаг — KASE и Yahoo Finance",
+  "updated": "2026-11-23T23:06:10.432Z",
   "kzt": {
     "USD": {
       "rate": 455.09,
@@ -32,6 +32,83 @@
       "date": "2026-11-23",
       "symbol": "AEDKZT_TOM",
       "kind": "close"
+    }
+  },
+  "prices": {
+    "KASE:KSPI": {
+      "price": 39144.17,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:HSBK": {
+      "price": 364.97,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KCEL": {
+      "price": 3195.9,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KZTO": {
+      "price": 1359,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KEGC": {
+      "price": 1488,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KZAP": {
+      "price": 26125,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KMGZ": {
+      "price": 35925,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:CCBN": {
+      "price": 5500,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:AIRA": {
+      "price": 693.24,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KZTK": {
+      "price": 44800,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:KZTKp": {
+      "price": 26550,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:BAST": {
+      "price": 3183.42,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:RAHT": {
+      "price": 17811.14,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:BSUL": {
+      "price": 441.51,
+      "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "KASE:MMGZp": {
+      "price": 5911,
+      "currency": "KZT",
+      "date": "2026-11-23"
     }
   }
 }
