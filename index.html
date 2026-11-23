@@ -123,6 +123,15 @@
   .shake { animation: shake .35s; }
   @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
   body.privacy #app, body.privacy #modal { visibility: hidden; }
+  .imp-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 4px 8px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+  .imp-row.off { opacity: .5; }
+  .imp-row input[type=checkbox] { width: 22px; height: 22px; margin: 2px 0 0; padding: 0; accent-color: var(--brand); }
+  .imp-row select { grid-column: 2 / 4; padding: 8px 10px; font-size: 15px; }
+  select.unc { border-color: #e0a64a; background: #fffaf0; }
+  .unc-tag { color: #b7791f; }
+  .sheet.tall { max-height: 96vh; }
+  .sticky-foot { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); background: var(--card); padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); margin-top: 8px; }
+  .sticky-foot button.block { margin-top: 6px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .chip { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 500; }
   .bar.warn > span { background: var(--warn); }
@@ -155,6 +164,7 @@ const ASSET_CATS = {
   securities: "Ценные бумаги", investment: "Вложения и доли", business: "Бизнес", receivable: "Долги мне",
   valuables: "Ценности", other: "Другое"
 };
+const MARKETS = { auto: "Сама: ₸ — с KASE, $ и др. — с мировых бирж", kase: "С KASE (Казахстанская биржа)", world: "С мировых бирж (NYSE, NASDAQ, LSE…)", none: "Не обновлять — цену ввожу сам" };
 const SEC_TYPES = { stock: "Акции", bond: "Облигации", etf: "Фонды (ETF, ПИФ)", deposit_note: "Ноты, депозитарные расписки", other: "Другое" };
 // категории, где стоимость = количество × цена за единицу
 const UNIT_CATS = { animals: ["count", "unitValue"], securities: ["qty", "price"] };
@@ -165,7 +175,7 @@ const ICONS = {
   "Продукты": "🛒", "Кафе и рестораны": "🍽️", "Транспорт": "🚕", "Авто": "🚗", "Жильё и коммуналка": "🏠", "Связь и интернет": "📱",
   "Здоровье": "💊", "Одежда и обувь": "👕", "Дети": "🧸", "Образование": "📚", "Развлечения": "🎬", "Подарки": "🎁", "Путешествия": "✈️",
   "Красота и уход": "💇", "Дом и ремонт": "🔨", "Животные": "🐎", "Кредиты и проценты": "🏦", "Налоги и сборы": "🧾", "Садака и помощь": "🤲",
-  "Зарплата": "💼", "Бизнес": "📈", "Аренда": "🔑", "Продажа": "🤝", "Проценты и дивиденды": "💹", "Возврат долга": "↩️", "Перевод": "🔁", "Другое": "•"
+  "Зарплата": "💼", "Бизнес": "📈", "Аренда": "🔑", "Продажа": "🤝", "Проценты и дивиденды": "💹", "Возврат долга": "↩️", "Перевод": "🔁", "Без категории": "❓", "Другое": "•"
 };
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const MONTHS_G = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
@@ -211,7 +221,8 @@ const F_ASSET = [
   { key: "count", label: "Количество, голов", type: "number", show: (d) => d.category === "animals", half: true },
   { key: "unitValue", label: "Цена за голову", type: "number", show: (d) => d.category === "animals", half: true },
   { key: "secType", label: "Вид бумаг", type: "select", options: SEC_TYPES, show: (d) => d.category === "securities" },
-  { key: "ticker", label: "Тикер", type: "text", placeholder: "KSPI, AAPL…", show: (d) => d.category === "securities", half: true },
+  { key: "market", label: "Цена обновляется", type: "select", options: MARKETS, show: (d) => d.category === "securities", hintBy: { securities: "Цена 1 шт. берётся с биржи, и стоимость меняется сама. Тикер для мировых бирж — как на Yahoo Finance: AAPL, BRK-B, HSBA.L. Облигации не обновляются." } },
+  { key: "ticker", label: "Тикер", type: "text", placeholder: "KSPI, HSBK, AAPL…", show: (d) => d.category === "securities", half: true },
   { key: "broker", label: "Брокер", type: "text", placeholder: "Freedom, Halyk Invest…", show: (d) => d.category === "securities", half: true },
   { key: "qty", label: "Количество, шт.", type: "number", show: (d) => d.category === "securities", half: true },
   { key: "price", label: "Цена за 1 шт.", type: "number", show: (d) => d.category === "securities", half: true },
@@ -436,6 +447,322 @@ async function loadAllRates(force) {
   return mergeRates(m, k);
 }
 
+// ---------- импорт банковской выписки: разбор прямо на телефоне, файл никуда не отправляется ----------
+const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/legacy/build/";
+const XLSX_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/xlsx.mjs";
+const RX_DATE = /^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4}|\d{2})(?!\d)/;
+const RX_NUM = /^([+\-−–]?)\s*(\d{1,3}(?:[   ]\d{3})+|\d{1,3}(?:,\d{3})+(?=\.\d)|\d+)(?:[.,](\d{1,2}))?$/;
+const CUR_WORDS = { "₸": "KZT", kzt: "KZT", "тг": "KZT", "тенге": "KZT", usd: "USD", "$": "USD", eur: "EUR", "€": "EUR", rub: "RUB", "₽": "RUB", "руб": "RUB", cny: "CNY", "¥": "CNY", aed: "AED", gbp: "GBP", try: "TRY", kgs: "KGS", uzs: "UZS" };
+const RX_CUR = /\s*(₸|kzt|тг|тенге|usd|\$|eur|€|rub|₽|руб|cny|¥|aed|gbp|try|kgs|uzs)\.?$/i;
+const RX_CUR_ONLY = /^(₸|kzt|тг|тенге|usd|\$|eur|€|rub|₽|руб|cny|¥|aed|gbp|try|kgs|uzs)\.?$/i;
+// сумма в ячейке: «- 2 500,00 ₸», «+10 000.00», «1,234.56 USD», «-2300»
+function parseAmountCell(raw, typed) {
+  let s = String(raw == null ? "" : raw).replace(/\s+/g, " ").trim();
+  if (!s) return null;
+  let cur = null, sign = 0;
+  const cm = s.match(RX_CUR);
+  if (cm) { cur = CUR_WORDS[cm[1].toLowerCase()]; s = s.slice(0, cm.index).trim(); }
+  if (/^\(.*\)$/.test(s)) { s = "-" + s.slice(1, -1).trim(); }
+  const lead = s.match(/^([+\-−–])\s*/);
+  if (lead) { sign = lead[1] === "+" ? 1 : -1; s = s.slice(lead[0].length); }
+  const m = RX_NUM.exec(s);
+  if (!m) return null;
+  if (m[1]) sign = m[1] === "+" ? 1 : -1;
+  const v = parseFloat(m[2].replace(/[   ,]/g, "") + (m[3] ? "." + m[3] : ""));
+  if (!Number.isFinite(v)) return null;
+  // «сильная» сумма: со знаком, копейками, валютой или разрядами — так её не спутать с номером
+  const strong = !!(typed || sign || m[3] || cur || /[   ,]/.test(m[2]));
+  return { v, sign, cur, strong };
+}
+const RX_DATE_ANY = /(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4}|\d{2})(?!\d)/;
+// все суммы внутри текста (даты и время предварительно убираем)
+function amountsIn(str) {
+  const clean = String(str).replace(new RegExp(RX_DATE_ANY.source, "g"), " ").replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ");
+  const out = [];
+  for (const m of clean.matchAll(/[+\-−–]?\s?\d{1,3}(?:[ \u00a0\u202f]\d{3})*(?:[.,]\d{2})(?!\d)\s?(?:₸|kzt|тг|usd|\$|eur|€|rub|₽)?/gi)) {
+    const a = parseAmountCell(m[0]); if (a && a.strong) out.push(a);
+  }
+  return out;
+}
+function normDate(dd, mm, yy) {
+  const d = +dd, m = +mm; let y = +yy;
+  if (yy.length === 2) y += 2000;
+  if (m < 1 || m > 12 || d < 1 || d > 31 || y < 2000 || y > 2100) return null;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+// строки PDF: текстовые фрагменты → строки (по высоте) → ячейки (по промежуткам)
+function itemsToRows(items, page) {
+  const its = items.filter((i) => i.str && i.str.trim())
+    .map((i) => ({ s: i.str, x: i.transform[4], y: i.transform[5], w: i.width || 0, ht: Math.abs(i.transform[3]) || Math.abs(i.transform[0]) || 8 }))
+    .sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines = [];
+  for (const it of its) {
+    const L = lines[lines.length - 1];
+    if (L && Math.abs(L.y - it.y) <= Math.max(2, it.ht * 0.5)) L.items.push(it);
+    else lines.push({ y: it.y, items: [it] });
+  }
+  return lines.map((L) => {
+    L.items.sort((a, b) => a.x - b.x);
+    const cells = [];
+    for (const it of L.items) {
+      const c = cells[cells.length - 1];
+      const gap = c ? it.x - c.x2 : 1e9;
+      if (c && gap < Math.max(3, it.ht * 0.7)) { c.text += (gap > it.ht * 0.12 && !/\s$/.test(c.text) ? " " : "") + it.s; c.x2 = Math.max(c.x2, it.x + it.w); }
+      else cells.push({ text: it.s, x: it.x, x2: it.x + it.w });
+    }
+    return { page, y: L.y, cells: cells.map((c) => ({ text: c.text.replace(/\s+/g, " ").trim(), x: c.x, x2: c.x2 })).filter((c) => c.text) };
+  }).filter((r) => r.cells.length);
+}
+// строки таблицы (CSV, Excel): номер столбца вместо координаты
+function tableRows(rows) {
+  return rows.map((r, i) => ({ page: 1, y: -i, table: true, cells: r.map((v, j) => {
+    let text = v, typed = false;
+    if (v instanceof Date) text = `${String(v.getDate()).padStart(2, "0")}.${String(v.getMonth() + 1).padStart(2, "0")}.${v.getFullYear()}`;
+    else if (typeof v === "number") { text = String(v); typed = true; }
+    return { text: String(text == null ? "" : text).replace(/\s+/g, " ").trim(), x: j, x2: j, typed };
+  }).filter((c) => c.text) })).filter((r) => r.cells.length);
+}
+function parseCsv(text) {
+  const first = text.split(/\r?\n/).slice(0, 5).join("\n");
+  const delim = [";", "\t", ","].map((d) => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+const HDR = [
+  ["bal", /(остат|баланс|balance|сальдо)/i],
+  ["fee", /(комисс|fee|commission)/i],
+  ["inc", /(приход|поступлен|зачислен|^кредит|credit|income|пополнен)/i],
+  ["exp", /(расход|списан|^дебет|debit|expense)/i],
+  ["amt", /(сумма|amount|sum\b)/i],
+  ["cur", /^(валюта|currency)/i],
+  ["date", /(дата|date)/i],
+  ["desc", /(описан|назначен|детал|операци|контрагент|наименован|получател|отправител|description|details|merchant|примечан)/i]
+];
+function headerCols(row) {
+  if (row.cells.some((c) => RX_DATE.test(c.text))) return null;
+  const cols = [];
+  for (const c of row.cells) {
+    if (c.text.length > 60) return null;
+    const k = HDR.find(([, rx]) => rx.test(c.text));
+    if (k) cols.push({ kind: k[0], label: c.text, x: (c.x + c.x2) / 2, x1: c.x, x2: c.x2 });
+  }
+  const kinds = new Set(cols.map((c) => c.kind));
+  if (!kinds.has("date") || !(kinds.has("amt") || kinds.has("inc") || kinds.has("exp"))) return null;
+  // несколько столбцов «сумма»: берём сумму в валюте счёта, остальные не учитываем
+  const amts = cols.filter((c) => c.kind === "amt");
+  if (kinds.has("inc") || kinds.has("exp")) amts.forEach((c) => { c.kind = "amt2"; });
+  else if (amts.length > 1) {
+    const main = amts.find((c) => /(сч[её]т|kzt|тенге|₸|account)/i.test(c.label)) || amts[amts.length - 1];
+    amts.forEach((c) => { if (c !== main) c.kind = "amt2"; });
+  }
+  return cols;
+}
+function colOf(cols, cell, table) {
+  if (!cols) return null;
+  if (table) return cols.find((c) => c.x === cell.x) || null;
+  const cx = (cell.x + cell.x2) / 2;
+  let best = null, bd = 1e9;
+  for (const c of cols) {
+    const overlap = Math.min(cell.x2, c.x2 + 8) - Math.max(cell.x, c.x1 - 8);
+    const d = overlap > 0 ? Math.abs(cx - c.x) * 0.5 : Math.abs(cx - c.x);
+    if (d < bd) { bd = d; best = c; }
+  }
+  return best;
+}
+const RX_SKIP = /(итого|всего за|обороты|остаток на|сальдо|баланс на|доступно на|входящий остаток|исходящий остаток|остаток \(|начальный остаток|конечный остаток|задолженность на|лимит|за период|заблокирован)/i;
+const RX_INCOME = /(пополнен|зачислен|поступлен|возврат|кэшб[эе]к|cashback|бонус|зарплат|заработн|входящ|перевод от|получен|refund|дивиденд|вознагражд|salary)/i;
+const RX_END_BAL = /(доступно на|остаток на конец|исходящий остаток|конечный остаток|остаток на \d|итоговый остаток|баланс на \d|closing balance)/i;
+const RX_START_BAL = /(остаток на начало|входящий остаток|начальный остаток|opening balance)/i;
+
+function parseStatement(rows) {
+  const txs = [];
+  let cols = null, cur = null;
+  const text = rows.slice(0, 60).map((r) => r.cells.map((c) => c.text).join(" ")).join("\n");
+  const curM = text.match(/валюта\s+сч[её]та[:\s]+([A-Za-zА-Яа-я₸$€₽¥]+)/i);
+  if (curM) cur = CUR_WORDS[curM[1].toLowerCase()] || (CUR_CODES.has(curM[1].toUpperCase()) ? curM[1].toUpperCase() : null);
+  const bals = [];
+  for (const row of rows) {
+    const hc = headerCols(row);
+    if (hc) { cols = hc; continue; }
+    const full = row.cells.map((c) => c.text).join(" ");
+    // остатки из шапки выписки
+    const dateIdx = row.cells.findIndex((c, i) => i < 3 && RX_DATE.test(c.text));
+    if ((RX_END_BAL.test(full) || RX_START_BAL.test(full)) && (dateIdx < 0 || RX_SKIP.test(full))) {
+      // в одной строке может быть и входящий, и исходящий остаток
+      const rx = new RegExp(RX_END_BAL.source + "|" + RX_START_BAL.source, "gi");
+      const hits = [...full.matchAll(rx)];
+      hits.forEach((m, i) => {
+        const seg = full.slice(m.index, i + 1 < hits.length ? hits[i + 1].index : full.length);
+        const dm = seg.match(RX_DATE_ANY);
+        const a = amountsIn(seg)[0];
+        if (a) bals.push({ v: a.sign < 0 ? -a.v : a.v, start: RX_START_BAL.test(m[0]), explicit: /(доступно на|на конец|исходящий|конечный|итоговый|closing)/i.test(m[0]), date: dm ? normDate(dm[1], dm[2], dm[3]) : null });
+      });
+      continue;
+    }
+    const last = txs[txs.length - 1];
+    if (dateIdx < 0) {
+      // продолжение описания с прошлой строки
+      const hasAmt = row.cells.some((c) => { const a = parseAmountCell(c.text, c.typed); return a && a.strong; });
+      if (last && !hasAmt && last.page === row.page && last.y - row.y < 40 && full.length < 90 && !RX_SKIP.test(full) && !/(страниц|page|www\.|kaspi\.kz|бик|bic|лицензи)/i.test(full)) {
+        last.desc = (last.desc + " " + full).trim(); last.y = row.y;
+      }
+      continue;
+    }
+    if (RX_SKIP.test(full)) continue;
+    const dc = row.cells[dateIdx];
+    const dm = RX_DATE.exec(dc.text);
+    const date = normDate(dm[1], dm[2], dm[3]);
+    if (!date) continue;
+    const cells = row.cells.slice();
+    const rest = dc.text.slice(dm[0].length).replace(/^\s*\d{1,2}:\d{2}(:\d{2})?/, "").trim();
+    cells.splice(dateIdx, 1, ...(rest ? [{ ...dc, text: rest }] : []));
+    let picked = null; const descParts = []; let rowCur = null;
+    const cands = [];
+    for (const c of cells) {
+      if (RX_DATE.test(c.text) && c.text.length <= 19) continue;      // вторая дата (дата обработки)
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(c.text)) continue;           // время
+      if (RX_CUR_ONLY.test(c.text)) { rowCur = CUR_WORDS[c.text.toLowerCase().replace(".", "")]; continue; }
+      const col = colOf(cols, c, row.table);
+      const a = parseAmountCell(c.text, c.typed);
+      if (a && (col ? ["amt", "inc", "exp", "bal", "fee", "amt2"].includes(col.kind) || a.strong : a.strong)) {
+        cands.push({ a, kind: col ? col.kind : null });
+        continue;
+      }
+      if (col && col.kind === "cur" && /^[A-Za-z]{3}$/.test(c.text)) { rowCur = c.text.toUpperCase(); continue; }
+      if (/^\*+\d{4}$|^\d{4}\s?\*+/.test(c.text)) continue;              // номер карты
+      descParts.push(c.text);
+    }
+    const nz = (k) => cands.find((x) => x.kind === k && x.a.v > 0);
+    let foreign = "";
+    if (cols && (cols.some((c) => c.kind === "inc") || cols.some((c) => c.kind === "exp"))) {
+      const i = nz("inc"), e = nz("exp");
+      // сумма в валюте счёта; валюта операции — только для справки
+      if (e) picked = { v: e.a.v, type: "expense", cur: e.a.cur || cur };
+      else if (i) picked = { v: i.a.v, type: i.a.sign < 0 ? "expense" : "income", cur: i.a.cur || cur };
+      const f = nz("amt2");
+      if (picked && f && rowCur && cur && rowCur !== cur) foreign = `(${String(f.a.v).replace(".", ",")} ${rowCur})`;
+      if (picked) rowCur = null;
+    }
+    if (!picked) {
+      const pool = cands.filter((x) => x.a.v > 0 && (x.kind == null || x.kind === "amt"));
+      const pref = pool.find((x) => x.kind === "amt") || pool.find((x) => x.a.sign) || pool[0];
+      if (pref) picked = { v: pref.a.v, sign: pref.a.sign, cur: pref.a.cur };
+    }
+    if (!picked) continue;
+    const desc = [...descParts, foreign].join(" ").replace(/(^|\s)[+\-]?0[.,]00(?=\s|\*|$)/g, " ").replace(/\*+\d{4}\b/g, " ").replace(/\s+/g, " ").trim();
+    if (!picked.type) picked.type = picked.sign > 0 ? "income" : picked.sign < 0 ? "expense" : (RX_INCOME.test(desc) ? "income" : "expense");
+    txs.push({ date, amount: Math.round(picked.v * 100) / 100, type: picked.type, desc, cur: picked.cur || rowCur || null, page: row.page, y: row.y });
+  }
+  // остаток на конец: «Доступно на / исходящий остаток», иначе остаток на самую позднюю дату
+  const ex = bals.find((b) => b.explicit && !b.start);
+  const dated = bals.filter((b) => b.date && !b.start).sort((a, b) => a.date.localeCompare(b.date));
+  const endBal = ex ? ex.v : dated.length ? dated[dated.length - 1].v : null;
+  const st = bals.find((b) => b.start) || (dated.length > 1 ? dated[0] : null);
+  return { txs, endBal, startBal: st ? st.v : null, currency: cur, text };
+}
+
+// ключ продавца: «Покупка MAGNUM CASH&CARRY 123456» → «magnum cash carry»
+const MK_STOP = new Set(["покупка", "оплата", "платеж", "платёж", "перевод", "переводы", "пополнение", "снятие", "разное", "по", "карте", "карта", "card", "purchase", "payment", "pos", "retail", "ип", "тоо", "too", "ао", "llp", "ltd", "kz", "kaz", "astana", "almaty", "астана", "алматы", "г", "город", "operation", "операция", "with", "the", "на", "в", "с"]);
+function merchantKey(s) {
+  const words = String(s || "").replace(/\([^)]*\)/g, " ").toLowerCase().replace(/ё/g, "е").split(/[^a-zа-яәіңғүұқөһ0-9]+/i)
+    .filter((w) => w && !MK_STOP.has(w) && !/^\d+$/.test(w) && !/^\d{3,}/.test(w));
+  return words.slice(0, 3).join(" ");
+}
+const CAT_RULES = [
+  ["expense", "Кафе и рестораны", /(кафе|cafe|coffee|кофе|ресторан|restaurant|bahandi|kfc|burger|mcdonald|salam ?bro|starbucks|pizza|пицц|суши|sushi|wolt|glovo|chocofood|яндекс ?еда|yandex ?eda|doner|донер|шаурм|lanzhou|chicken|столовая|чайхан|бар\b|pub\b|кальян|grill|гриль|bakery|пекарн)/i],
+  ["expense", "Продукты", /(magnum|small\b|galmart|anvar|interfood|metro cash|toimart|arbuz|dastarkhan|дастархан|food ?city|минимаркет|мини-маркет|супермаркет|supermarket|продукт|market|маркет|дүкен|азық|skif|астыкжан|astykzhan|булочн|мясн|овощ|fruit|фрукт)/i],
+  ["expense", "Транспорт", /(yandex[ .]?go|yandex[ .]?taxi|яндекс ?(go|такси)|uber|indriver|indrive|такси|taxi|onay|avtobys|автобус|метрополитен|bolt|самокат|whoosh|jet sharing)/i],
+  ["expense", "Путешествия", /(air ?astana|fly ?arystan|scat|qazaq ?air|aviata|chocotravel|booking|airbnb|hotel|отель|гостиниц|ktzh|қтж|temir ?zholy|tickets|аэропорт|airport|duty ?free|aeroflot|turkish air|pegasus|wizz|tour|тур )/i],
+  ["expense", "Авто", /(азс|helios|qazaq ?oil|gazprom|газпром|sinooil|royal ?petrol|kazmunaigas|kmg|lukoil|лукойл|бензин|автомойк|car ?wash|шиномонт|автозапчаст|парковк|parking|огпо|ogpo|техосмотр)/i],
+  ["expense", "Жильё и коммуналка", /(коммунал|ерц|alseco|алсеко|ivc|ивц|энерго|energo|водоканал|astana ?su|qazaqgaz|kaztransgaz|газ снабж|тепло|кск|оси\b|жкх|электроэнерг|аренда квартир|квартплат)/i],
+  ["expense", "Связь и интернет", /(beeline|билайн|kcell|activ\b|tele2|altel|izi\b|kazakhtelecom|казахтелеком|megaline|id ?net|almatv|apple\.com|icloud|google|сотовая|мобильн)/i],
+  ["expense", "Развлечения", /(кино|cinema|kinopark|chaplin|kinoplexx|netflix|spotify|steam|playstation|xbox|ticketon|kassir|театр|концерт|боулинг|аквапарк|ivi\b|kinopoisk|okko|megogo|youtube)/i],
+  ["expense", "Здоровье", /(аптек|apteka|pharm|фарм|europharma|sadykhan|садыхан|biosfera|клиник|clinic|медцентр|medical|стомат|dental|invivo|инвиво|olymp|олимп|kdl|анализ|больниц|hospital|врач|doctor|оптика)/i],
+  ["expense", "Одежда и обувь", /(zara|lc ?waikiki|lcw|bershka|pull ?& ?bear|stradivarius|h ?& ?m\b|mango|defacto|koton|adidas|nike|puma|reebok|new balance|ostin|colin|lamoda|befree|gloria jeans|uniqlo|sportmaster|megasport|intertop|kari\b|ecco|обув|одежд)/i],
+  ["expense", "Дети", /(детск|kids|игрушк|toys|marwin|мир кубиков|lego|bebek|baby|памперс|детсад|садик|балабақша)/i],
+  ["expense", "Образование", /(школ|school|универ|universit|курс|course|udemy|coursera|skillbox|образован|учебн|книг|book|меломан|meloman|neural|нейро)/i],
+  ["expense", "Красота и уход", /(салон|барбер|barber|парикмах|beauty|красот|маникюр|nail|spa\b|спа\b|косметик|cosmetic|golden apple|летуаль|etoile|sephora|yves rocher|массаж|massage)/i],
+  ["expense", "Дом и ремонт", /(leroy|леруа|technodom|технодом|sulpak|сулпак|mechta|мечта|alser|evrika|ikea|hoff|строй|ремонт|мебел|furniture|хозтовар|fix ?price|сантехн|обои|dns\b)/i],
+  ["expense", "Животные", /(зоо|zoo|vet|ветерин|petshop|pet ?shop)/i],
+  ["expense", "Кредиты и проценты", /(погашени|kaspi ?red|рассрочк|кредит|ипотек|otbasy|отбасы|займ|loan|микрокредит)/i],
+  ["expense", "Налоги и сборы", /(налог|egov|госпошлин|штраф|пени|kgd|кгд|ипн|опв|осмс|соцотчисл|судебн|нотариус|цон\b)/i],
+  ["expense", "Садака и помощь", /(садака|sadaqa|мечеть|mosque|благотвор|зекет|закят|қайырымдылық|charity)/i],
+  ["expense", "Подарки", /(подар|gift|цвет(ы|ов)|flower|букет)/i],
+  ["income", "Зарплата", /(зарплат|заработн|salary|аванс|оплата труда|отпускн)/i],
+  ["income", "Проценты и дивиденды", /(вознагражд|процент|дивиденд|кэшб[эе]к|cashback|бонус|депозит.*доход)/i],
+  ["income", "Аренда", /(аренд)/i],
+  ["income", "Возврат долга", /(возврат долга)/i]
+];
+function guessCategory(desc, type, learned) {
+  const k = merchantKey(desc);
+  const l = learned && k && learned[k];
+  if (l && (!l.t || l.t === type)) return l.c || "";
+  for (const [t, c, rx] of CAT_RULES) if (t === type && rx.test(desc)) return c;
+  return "";
+}
+// какой счёт: ищем название банка в выписке и в названиях счетов
+const BANKS = [["kaspi", /kaspi|каспи/i], ["halyk", /halyk|халык|народн/i], ["jusan", /jusan|жусан/i], ["freedom", /freedom|фридом/i], ["forte", /forte|форте/i], ["bcc", /bcc|центркредит|centercredit/i], ["bereke", /bereke|береке/i], ["home credit", /home ?credit|хоум/i], ["otbasy", /otbasy|отбасы/i], ["eurasian", /eurasian|евразийск/i], ["rbk", /\brbk\b|рбк/i], ["altyn", /altyn|алтын/i]];
+function guessAccount(text, accounts) {
+  for (const [, rx] of BANKS) if (rx.test(text)) { const a = accounts.find((x) => rx.test(x.name || "")); if (a) return a.id; }
+  return null;
+}
+async function fileRows(file, askPassword) {
+  const name = (file.name || "").toLowerCase();
+  const buf = await file.arrayBuffer();
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    const pdfjs = await import(PDFJS + "pdf.min.mjs");
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.mjs";
+    const task = pdfjs.getDocument({ data: new Uint8Array(buf), isEvalSupported: false });
+    task.onPassword = (cb, reason) => { const p = askPassword(reason === 2); if (p == null) task.destroy(); else cb(p); };
+    const doc = await task.promise;
+    const rows = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      rows.push(...itemsToRows(tc.items, p));
+    }
+    doc.destroy();
+    return rows;
+  }
+  if (/\.(xlsx|xls|xlsm|ods)$/.test(name)) {
+    const X = await import(XLSX_URL);
+    const wb = X.read(new Uint8Array(buf), { type: "array", cellDates: true });
+    const out = [];
+    for (const sn of wb.SheetNames) out.push(...X.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: "" }));
+    return tableRows(out);
+  }
+  let text = new TextDecoder("utf-8").decode(buf);
+  if (text.includes("�")) text = new TextDecoder("windows-1251").decode(buf);
+  return tableRows(parseCsv(text.replace(/^﻿/, "")));
+}
+
+// ---------- цены ценных бумаг (rates.json → prices) ----------
+function secMarket(a) {
+  if (!a || a.category !== "securities" || !a.ticker || a.market === "none" || a.secType === "bond") return null;
+  if (a.market === "kase") return "KASE";
+  if (a.market === "world") return "YAHOO";
+  return (a.currency || "KZT") === "KZT" ? "KASE" : "YAHOO";
+}
+// KASE различает регистр: привилегированные акции — KZTKp
+function normTicker(t, m) {
+  let s = String(t || "").trim().replace(/\s+/g, "");
+  if (m === "KASE") { s = s.toUpperCase(); if (/^[A-Z]{4}P$/.test(s)) s = s.slice(0, 4) + "p"; }
+  else s = s.toUpperCase();
+  return /^[A-Za-z0-9.\-=^_]{1,20}$/.test(s) ? s : "";
+}
+function plural(n, one, few, many) { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; }
+
 // ---------- код-пароль (хранится только на этом устройстве, в виде хеша) ----------
 const PIN_KEY = (uid) => "mf_pin_" + uid;
 function getPin(uid) { try { return JSON.parse(localStorage.getItem(PIN_KEY(uid)) || "null"); } catch (e) { return null; } }
@@ -614,6 +941,7 @@ async function start() {
         S.data[sec] = q.docs.map((d) => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
         S.loaded[sec] = true;
+        if (sec === "assets") registerTickers();
         render();
       }, (e) => { S.dataErr = errText(e); render(); }));
     }
@@ -641,7 +969,29 @@ async function start() {
     if (!k) return S.rates && S.rates.rates && S.rates.rates.KZT ? `Курс: 1 $ = ${fmtMoney(S.rates.rates.KZT, "KZT", 2)} (рыночный, на ${fmtDay(S.rates.date)})` : "";
     return `Курс KASE на ${fmtDay(k.kzt.USD.date)}: 1 $ = ${fmtMoney(k.kzt.USD.rate, "KZT", 2)}`;
   }
+  function livePrice(a) {
+    const m = secMarket(a); if (!m) return null;
+    const sym = normTicker(a.ticker, m); if (!sym) return null;
+    const pr = S.rates && S.rates.kase && S.rates.kase.prices;
+    const p = pr && pr[m + ":" + sym];
+    return p && p.price > 0 ? { ...p, market: m, symbol: sym } : null;
+  }
+  // тикеры, которые нужно обновлять, — в общий список (без привязки к пользователю)
+  const tickersSent = new Set();
+  function registerTickers() {
+    const pr = (S.rates && S.rates.kase && S.rates.kase.prices) || {};
+    for (const a of S.data.assets) {
+      const m = secMarket(a); if (!m) continue;
+      const sym = normTicker(a.ticker, m); if (!sym) continue;
+      const id = m + ":" + sym;
+      if (tickersSent.has(id) || pr[id]) continue;
+      tickersSent.add(id);
+      F.setDoc(F.doc(db, "tickers", m + "_" + sym), { symbol: sym, market: m, updatedAt: F.serverTimestamp() }).catch(() => {});
+    }
+  }
   function assetValue(a) {
+    const lp = a.category === "securities" && a.qty ? livePrice(a) : null;
+    if (lp) { const v = convert(a.qty * lp.price, lp.currency || a.currency, a.currency || lp.currency); if (v != null) return v; }
     const u = UNIT_CATS[a.category];
     if (u && (a.value == null || a.value === 0) && a[u[0]] && a[u[1]]) return a[u[0]] * a[u[1]];
     return a.value || 0;
@@ -691,7 +1041,7 @@ async function start() {
 
   // ---------- операции ----------
   function txEffects(t) {
-    if (!t) return [];
+    if (!t || t.noBal) return [];
     if (t.type === "expense" && t.accountId) return [[t.accountId, -(t.amount || 0)]];
     if (t.type === "income" && t.accountId) return [[t.accountId, t.amount || 0]];
     if (t.type === "transfer") {
@@ -816,8 +1166,12 @@ async function start() {
         if (!d.category) return say("err", "Выберите категорию.");
         Object.assign(data, { category: d.category, accountId: d.accountId || null, toAccountId: null, toAmount: null });
       }
+      if (item && item.noBal) data.noBal = true;
       const btn = ev.submitter; if (btn) btn.disabled = true;
-      try { await saveTx(item && item.id, data, item); closeModal(); }
+      try {
+        await saveTx(item && item.id, data, item); closeModal();
+        if (item && item.mkey && data.type !== "transfer" && data.category && data.category !== item.category) learnMerchants([[item.mkey, data.category, data.type]]);
+      }
       catch (e) { say("err", errText(e)); if (btn) btn.disabled = false; }
     }
     async function del() {
@@ -1010,8 +1364,244 @@ async function start() {
   function sumTx(list, type) { return sum(list.filter((t) => t.type === type).map((t) => toBase(t.amount, t.currency) || 0)); }
   function byCategory(list, type) {
     const m = {};
-    for (const t of list) if (t.type === type) m[t.category || "Другое"] = (m[t.category || "Другое"] || 0) + (toBase(t.amount, t.currency) || 0);
+    for (const t of list) if (t.type === type) m[t.category || "Без категории"] = (m[t.category || "Без категории"] || 0) + (toBase(t.amount, t.currency) || 0);
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }
+
+
+  // ---------- выписка из банка ----------
+  const uncList = () => S.tx.filter((t) => t.type !== "transfer" && !t.category);
+  const merchRef = () => F.doc(db, "users", S.viewUid, "settings", "merchants");
+  async function loadMerchants() {
+    if (S.merchants && S.merchants.uid === S.viewUid) return S.merchants.map;
+    let map = {};
+    try { const d = await F.getDoc(merchRef()); if (d.exists()) map = (d.data() || {}).map || {}; } catch (e) { /* без подсказок */ }
+    S.merchants = { uid: S.viewUid, map };
+    return map;
+  }
+  // запоминаем: этот продавец → эта категория
+  async function learnMerchants(pairs) {
+    const map = await loadMerchants();
+    let changed = false;
+    for (const [k, c, t] of pairs) { if (!k || !c || k.length > 120) continue; if (!map[k] || map[k].c !== c || map[k].t !== t) { map[k] = { c, t }; changed = true; } }
+    if (!changed) return;
+    try { await F.setDoc(merchRef(), { map, updatedAt: F.serverTimestamp() }); } catch (e) { /* не страшно */ }
+  }
+  function pickStatement() {
+    const inp = h("input", { type: "file", accept: ".pdf,.csv,.xlsx,.xls,.txt,application/pdf,text/csv", multiple: true, style: "display:none" });
+    inp.addEventListener("change", () => { const files = [...inp.files]; inp.remove(); if (files.length) importFiles(files); });
+    document.body.append(inp);
+    inp.click();
+  }
+  function sheetHead(title) {
+    return h("div", { class: "sheet-head" }, h("h2", {}, title), h("button", { type: "button", class: "x", onclick: closeModal, "aria-label": "Закрыть" }, "×"));
+  }
+  async function importFiles(files) {
+    const sheet = h("div", { class: "sheet tall" });
+    modalRoot.replaceChildren(h("div", { class: "overlay" }, sheet));
+    document.body.style.overflow = "hidden";
+    sheet.replaceChildren(sheetHead("Выписка"), h("p", { class: "muted" }, "Читаю выписку… Файл обрабатывается прямо на телефоне и никуда не отправляется."));
+    const all = [], errs = [];
+    let endBal = null, text = "", currency = null;
+    for (const f of files) {
+      try {
+        const rows = await fileRows(f, (wrong) => window.prompt(wrong ? "Пароль не подошёл. Введите пароль от PDF ещё раз:" : "Файл защищён паролем. Введите пароль от PDF:"));
+        const r = parseStatement(rows);
+        all.push(...r.txs.map((t) => ({ ...t, file: f.name })));
+        if (r.endBal != null) endBal = r.endBal;
+        if (r.currency) currency = r.currency;
+        text += r.text + "\n";
+        if (!r.txs.length) errs.push(`${f.name}: операции не найдены. Если это фото или скан, скачайте выписку в PDF из приложения банка.`);
+      } catch (e) {
+        errs.push(`${f.name}: ${e && e.name === "PasswordException" ? "нужен пароль от файла" : "не удалось прочитать файл" + (navigator.onLine === false ? " — нет интернета, чтобы загрузить модуль чтения PDF" : "")}.`);
+      }
+    }
+    if (!all.length) {
+      sheet.replaceChildren(sheetHead("Выписка"), h("div", { class: "err", style: "white-space:pre-line" }, errs.join("\n") || "Операции не найдены."),
+        h("p", { class: "muted small-text" }, "Подходят PDF-выписки из приложений банков (Kaspi, Halyk, Jusan, Freedom, Forte, BCC и др.), а также CSV и Excel."),
+        h("button", { class: "block ghost", onclick: closeModal }, "Закрыть"));
+      return;
+    }
+    if (files.length > 1) endBal = null;
+    const learned = await loadMerchants();
+    reviewImport(sheet, all, { endBal, text, errs, learned, currency });
+  }
+  function reviewImport(sheet, list, info) {
+    const accs = S.data.accounts;
+    const lastAcc = localStorage.getItem("mf_imp_acc_" + S.viewUid);
+    let accId = guessAccount(info.text, accs) || (accs.some((a) => a.id === lastAcc) ? lastAcc : (accs[0] && accs[0].id) || "");
+    const occ = {};
+    const rows = list.map((t) => {
+      const mkey = merchantKey(t.desc);
+      const base = `${t.date}|${t.type}|${t.amount}|${mkey}`;
+      const n = (occ[t.file + "|" + base] = (occ[t.file + "|" + base] || 0) + 1);
+      return { ...t, key: base + "#" + n, mkey, cat: guessCategory(t.desc, t.type, info.learned), on: true, dup: "" };
+    }).sort((a, b) => b.date.localeCompare(a.date));
+    // повторная загрузка той же выписки и операции, уже внесённые вручную
+    const loaded = new Set(S.tx.filter((t) => t.importKey).map((t) => t.importKey));
+    const manual = {};
+    for (const t of S.tx) if (!t.importKey && t.type !== "transfer") { const k = `${t.date}|${t.type}|${t.amount}`; manual[k] = (manual[k] || 0) + 1; }
+    const seen = new Set();
+    for (const r of rows) {
+      if (loaded.has(r.key) || seen.has(r.key)) { r.dup = "уже загружено"; r.on = false; }
+      else { const k = `${r.date}|${r.type}|${r.amount}`; if (manual[k]) { manual[k]--; r.dup = "похоже, уже внесено вручную"; r.on = false; } }
+      seen.add(r.key);
+    }
+    let mode = info.endBal != null ? "set" : "apply";
+    const curOf = () => { const a = accs.find((x) => x.id === accId); return a ? a.currency : info.currency || (rows.find((r) => r.cur) || {}).cur || baseCur(); };
+    const listBox = h("div", {}), sumBox = h("div", { style: "margin-top:10px" }), modeBox = h("div", {}), errBox = h("div", {});
+    const saveBtn = h("button", { type: "button", class: "block", onclick: () => save() }, "");
+    const accSel = h("select", {}, [...accs.map((a) => h("option", { value: a.id, selected: a.id === accId }, `${a.name} · ${fmtMoney(a.balance, a.currency)}`)),
+      h("option", { value: "", selected: !accId }, "Без счёта — остатки не менять")]);
+    accSel.addEventListener("change", () => { accId = accSel.value; drawMode(); draw(); });
+    function drawMode() {
+      modeBox.replaceChildren();
+      const a = accs.find((x) => x.id === accId);
+      if (!a) return;
+      const opts = [];
+      if (info.endBal != null) opts.push(["set", `Поставить остаток из выписки: ${fmtMoney(info.endBal, a.currency)}`]);
+      opts.push(["apply", "Пересчитать остаток по загруженным операциям"], ["none", "Не менять остаток"]);
+      if (!opts.some((o) => o[0] === mode)) mode = opts[0][0];
+      const sel = h("select", {}, opts.map(([k, t]) => h("option", { value: k, selected: k === mode }, t)));
+      sel.addEventListener("change", () => { mode = sel.value; });
+      modeBox.append(h("label", {}, `Остаток счёта (сейчас ${fmtMoney(a.balance, a.currency)})`), sel);
+    }
+    function catSelect(r) {
+      const sel = h("select", { class: r.cat ? "" : "unc" }, [
+        h("option", { value: "" }, "❓ Без категории — заполню позже"),
+        ...catList(r.type).map((c) => h("option", { value: c, selected: c === r.cat }, `${ICONS[c] || "•"} ${c}`)),
+        h("option", { value: "__flip" }, r.type === "expense" ? "⇄ Это доход, а не расход" : "⇄ Это расход, а не доход"),
+        h("option", { value: "__skip" }, "✕ Не загружать (перевод между своими счетами и т.п.)")]);
+      sel.addEventListener("change", () => {
+        const v = sel.value;
+        if (v === "__flip") { r.type = r.type === "expense" ? "income" : "expense"; r.cat = guessCategory(r.desc, r.type, info.learned); }
+        else if (v === "__skip") r.on = false;
+        else {
+          r.cat = v;
+          // тот же продавец — та же категория
+          if (v && r.mkey) for (const o of rows) if (o !== r && o.on && o.mkey === r.mkey && o.type === r.type && !o.cat) o.cat = v;
+        }
+        draw();
+      });
+      return sel;
+    }
+    function draw() {
+      const on = rows.filter((r) => r.on);
+      const cur = curOf();
+      const inc = sum(on.filter((r) => r.type === "income").map((r) => r.amount)), exp = sum(on.filter((r) => r.type === "expense").map((r) => r.amount));
+      const unc = on.filter((r) => !r.cat).length, dups = rows.filter((r) => r.dup).length;
+      sumBox.replaceChildren(
+        h("div", { class: "row small-text" }, h("div", { class: "grow" }, `Найдено: ${rows.length}, к загрузке: ${on.length}`),
+          h("span", { class: "num pos" }, "+" + fmtMoney(inc, cur, 0)), h("span", { class: "num neg", style: "margin-left:8px" }, "−" + fmtMoney(exp, cur, 0))),
+        dups ? h("div", { class: "muted small-text" }, `${dups} уже есть в приложении — галочки сняты`) : "",
+        unc ? h("div", { class: "small-text unc-tag" }, `❓ Без категории: ${unc}. Выберите сейчас или оставьте — разберёте позже`) : "");
+      listBox.replaceChildren(...rows.map((r) => h("div", { class: "imp-row" + (r.on ? "" : " off") },
+        h("input", { type: "checkbox", checked: r.on, "aria-label": "Загрузить", onchange: (e) => { r.on = e.target.checked; draw(); } }),
+        h("div", { style: "min-width:0" }, h("div", { class: "ellipsis", style: "font-weight:600" }, r.desc || "(без описания)"),
+          h("div", { class: "muted small-text" }, dayLabel(r.date) + (r.dup ? " · " + r.dup : ""))),
+        h("div", { class: "num " + (r.type === "income" ? "pos" : "neg"), style: "font-weight:600;white-space:nowrap" }, (r.type === "income" ? "+" : "−") + fmtMoney(r.amount, r.cur && r.cur !== cur ? r.cur : cur)),
+        r.on ? catSelect(r) : null)));
+      saveBtn.textContent = on.length ? `Загрузить ${on.length} ${plural(on.length, "операцию", "операции", "операций")}` : "Нечего загружать";
+      saveBtn.disabled = !on.length;
+    }
+    async function save() {
+      const on = rows.filter((r) => r.on);
+      if (!on.length) return;
+      saveBtn.disabled = true; saveBtn.textContent = "Сохраняю…"; errBox.replaceChildren();
+      const a = accs.find((x) => x.id === accId) || null;
+      const cur = curOf();
+      const noBal = !a || mode !== "apply";
+      try {
+        const col = F.collection(db, "users", S.viewUid, "transactions");
+        const now = Date.now();
+        let delta = 0;
+        for (let i = 0; i < on.length; i += 400) {
+          const batch = F.writeBatch(db);
+          on.slice(i, i + 400).forEach((r, j) => {
+            let amount = r.amount, note = r.desc || "";
+            if (r.cur && r.cur !== cur) { const c = convert(r.amount, r.cur, cur); if (c != null) { note = `${note} (${fmtMoney(r.amount, r.cur)})`; amount = Math.round(c * 100) / 100; } }
+            delta += (r.type === "income" ? 1 : -1) * amount;
+            batch.set(F.doc(col), { type: r.type, amount, currency: cur, date: r.date, category: r.cat || "", accountId: a ? a.id : null, toAccountId: null, toAmount: null,
+              note: note.slice(0, 200), importKey: r.key, mkey: r.mkey || "", src: "statement", noBal, ts: now - i - j, createdAt: F.serverTimestamp(), createdBy: S.user.uid });
+          });
+          await batch.commit();
+        }
+        if (a && mode !== "none") {
+          const newBal = Math.round((mode === "apply" ? (a.balance || 0) + delta : info.endBal) * 100) / 100;
+          const hist = Array.isArray(a.history) ? a.history.slice(-59) : [];
+          hist.push({ d: today(), v: newBal });
+          await F.updateDoc(F.doc(db, "users", S.viewUid, "accounts", a.id), {
+            balance: mode === "apply" ? F.increment(Math.round(delta * 100) / 100) : newBal, history: hist, updatedAt: F.serverTimestamp() });
+        }
+        await learnMerchants(on.filter((r) => r.cat && r.mkey).map((r) => [r.mkey, r.cat, r.type]));
+        if (a) try { localStorage.setItem("mf_imp_acc_" + S.viewUid, a.id); } catch (e) {}
+        await logEdit("transactions", "import", "create", `выписка: ${on.length} операций`);
+        const unc = on.filter((r) => !r.cat).length;
+        S.tab = "expenses"; S.txFilter = "all"; S.txShow = 60;
+        sheet.replaceChildren(sheetHead("Готово ✓"),
+          h("p", {}, `Загружено ${on.length} ${plural(on.length, "операция", "операции", "операций")}.` + (a && mode !== "none" ? ` Остаток «${a.name}» обновлён.` : "")),
+          unc ? h("p", { class: "unc-tag" }, `❓ Без категории: ${unc}. Разберите их, чтобы отчёты были точными.`) : "",
+          h("button", { class: "block", onclick: () => { closeModal(); render(); if (unc) openUncatSheet(); } }, unc ? "Разобрать сейчас" : "Хорошо"),
+          unc ? h("button", { class: "block ghost", onclick: () => { closeModal(); render(); } }, "Позже") : "");
+      } catch (e) { draw(); errBox.replaceChildren(h("div", { class: "err" }, errText(e))); }
+    }
+    drawMode(); draw();
+    sheet.replaceChildren(sheetHead("Выписка"),
+      info.errs.length ? h("div", { class: "err", style: "white-space:pre-line" }, info.errs.join("\n")) : "",
+      h("label", { style: "margin-top:4px" }, "Счёт выписки"), accSel, modeBox, sumBox, listBox, errBox,
+      h("div", { class: "sticky-foot" }, saveBtn));
+  }
+  // быстрый разбор операций без категории
+  function openUncatSheet() {
+    const list = uncList().slice(0, 300).map((t) => ({ ...t }));
+    const done = {};
+    const sheet = h("div", { class: "sheet tall" });
+    const overlay = h("div", { class: "overlay", onclick: (e) => { if (e.target === overlay) closeModal(); } }, sheet);
+    async function setCat(t, v) {
+      if (v === "__del") { await deleteTx(t); done[t.id] = "удалено"; return; }
+      if (v === "__flip") {
+        const data = { type: t.type === "expense" ? "income" : "expense", amount: t.amount, currency: t.currency, date: t.date, note: t.note || "", category: "", accountId: t.accountId || null, toAccountId: null, toAmount: null };
+        if (t.noBal) data.noBal = true;
+        await saveTx(t.id, data, t); t.type = data.type; return;
+      }
+      const same = v && t.mkey ? list.filter((o) => o !== t && !done[o.id] && o.mkey === t.mkey && o.type === t.type) : [];
+      const batch = F.writeBatch(db);
+      for (const o of [t, ...same]) { batch.update(F.doc(db, "users", S.viewUid, "transactions", o.id), { category: v, updatedAt: F.serverTimestamp(), updatedBy: S.user.uid }); done[o.id] = v; }
+      await batch.commit();
+      await logEdit("transactions", t.id, "update", `категория: ${v}`);
+      if (t.mkey) learnMerchants([[t.mkey, v, t.type]]);
+    }
+    function draw() {
+      const left = list.filter((t) => !done[t.id]).length;
+      sheet.replaceChildren(sheetHead("Без категории"),
+        h("p", { class: "muted small-text" }, left ? `Осталось: ${left}. Выберите категорию — для этого продавца она запомнится и в следующих выписках подставится сама.` : "Всё разобрано 👍"),
+        ...list.map((t) => {
+          const cur = done[t.id];
+          const sel = !cur && h("select", { class: "unc" }, [h("option", { value: "" }, "❓ Выберите категорию"),
+            ...catList(t.type).map((c) => h("option", { value: c }, `${ICONS[c] || "•"} ${c}`)),
+            h("option", { value: "__flip" }, t.type === "expense" ? "⇄ Это доход, а не расход" : "⇄ Это расход, а не доход"),
+            h("option", { value: "__del" }, "🗑 Удалить операцию")]);
+          if (sel) sel.addEventListener("change", async () => { if (!sel.value) return; sel.disabled = true; try { await setCat(t, sel.value); } catch (e) { alert(errText(e)); } draw(); });
+          return h("div", { class: "imp-row" + (cur ? " off" : ""), style: "grid-template-columns:minmax(0,1fr) auto" },
+            h("div", { style: "min-width:0" }, h("div", { class: "ellipsis", style: "font-weight:600" }, t.note || accName(t.accountId) || "(без описания)"),
+              h("div", { class: "muted small-text" }, dayLabel(t.date) + (cur ? ` · ${cur === "удалено" ? "удалено" : "✓ " + cur}` : ""))),
+            h("div", { class: "num " + (t.type === "income" ? "pos" : "neg"), style: "font-weight:600;white-space:nowrap" }, (t.type === "income" ? "+" : "−") + fmtMoney(t.amount, t.currency)),
+            sel ? (sel.style.gridColumn = "1 / 3", sel) : null);
+        }),
+        h("div", { class: "sticky-foot" }, h("button", { class: "block" + (left ? " ghost" : ""), onclick: closeModal }, left ? "Закрыть — доразберу позже" : "Готово")));
+    }
+    modalRoot.replaceChildren(overlay);
+    document.body.style.overflow = "hidden";
+    draw();
+  }
+  function importCard() {
+    if (!S.loaded.tx || !S.loaded.accounts) return null;
+    const unc = uncList().length;
+    return h("div", { class: "card" },
+      h("div", { class: "row" }, h("div", { class: "ico" }, "📄"),
+        h("div", { class: "grow" }, h("b", {}, "Выписка из банка"), h("div", { class: "muted small-text" + (unc ? " unc-tag" : "") }, unc ? `❓ Без категории: ${unc}` : "Загрузите PDF — операции внесутся сами")),
+        unc ? h("button", { class: "small ghost", onclick: openUncatSheet }, "Разобрать") : null,
+        h("button", { class: "small", onclick: pickStatement }, "Загрузить")));
   }
 
   // ---------- модальное окно с формой ----------
@@ -1093,12 +1683,17 @@ async function start() {
       if (section === "assets") {
         const u = UNIT_CATS[data.category];
         if (data.value == null && u && data[u[0]] && data[u[1]]) data.value = data[u[0]] * data[u[1]];
-        if (data.value == null) return say("err", "Укажите текущую стоимость.");
+        if (data.category === "securities" && data.qty) {
+        const lp = livePrice(data);
+        if (lp) { const v = convert(data.qty * lp.price, lp.currency, data.currency); if (v != null) data.value = Math.round(v * 100) / 100; }
+        else if (data.value == null && secMarket(data)) return say("err", "Цена этой бумаги появится после ближайшего обновления с биржи. Пока укажите цену за 1 шт. или стоимость.");
+      }
+      if (data.value == null) return say("err", "Укажите текущую стоимость.");
       } else if (data.balance == null) {
         return say("err", section === "accounts" ? "Укажите остаток." : "Укажите остаток долга.");
       }
       const btn = ev.submitter; if (btn) btn.disabled = true;
-      try { await saveItem(section, item && item.id, data, item); closeModal(); }
+      try { await saveItem(section, item && item.id, data, item); closeModal(); if (section === "assets") registerTickers(); }
       catch (e) { say("err", errText(e)); if (btn) btn.disabled = false; }
     }
     async function del() {
@@ -1396,6 +1991,7 @@ async function start() {
         h("div", { class: "row muted" }, h("div", { class: "grow" }, "Платежи в месяц"), h("div", { class: "num" }, fmtMoney(t.monthly, base, 0))),
         t.assets > 0 && h("div", { class: "row muted" }, h("div", { class: "grow" }, "Долги к активам"), h("div", { class: "num" }, Math.round(t.debt / t.assets * 100) + "%"))),
       !wait && monthCard(),
+      !wait && importCard(),
       !wait && goalsHomeCard(),
       ratesCard()
     ];
@@ -1432,8 +2028,8 @@ async function start() {
     const sub = t.type === "transfer" ? `${accName(t.accountId) || "?"} → ${accName(t.toAccountId) || "?"}` : [t.note, accName(t.accountId)].filter(Boolean).join(" · ");
     const conv = t.currency !== base ? toBase(t.amount, t.currency) : null;
     return h("div", { class: "item tap", onclick: () => openTxForm(t) },
-      h("div", { class: "row" }, h("div", { class: "ico" }, ICONS[t.category] || (t.type === "transfer" ? "🔁" : "•")),
-        h("div", { class: "grow" }, h("div", { class: "ellipsis", style: "font-weight:600" }, t.category || TX_TYPES[t.type]), sub && h("div", { class: "muted small-text ellipsis" }, sub)),
+      h("div", { class: "row" }, h("div", { class: "ico" }, ICONS[t.category] || (t.type === "transfer" ? "🔁" : t.category ? "•" : "❓")),
+        h("div", { class: "grow" }, t.category || t.type === "transfer" ? h("div", { class: "ellipsis", style: "font-weight:600" }, t.category || TX_TYPES[t.type]) : h("div", { class: "ellipsis unc-tag", style: "font-weight:600" }, "❓ Без категории"), sub && h("div", { class: "muted small-text ellipsis" }, sub)),
         h("div", { class: "amt" }, h("div", { class: "num " + cls }, sign + fmtMoney(t.amount, t.currency)), conv != null && h("div", { class: "muted small-text num" }, "≈ " + fmtMoney(conv, base, 0)))));
   }
   function barChart(list, from, to) {
@@ -1492,8 +2088,16 @@ async function start() {
     const groups = [];
     for (const t of shown) { const g = groups[groups.length - 1]; if (g && g.date === t.date) g.items.push(t); else groups.push({ date: t.date, items: [t] }); }
 
+    const unc = uncList().length;
     return [
       h("h1", {}, "Доходы и расходы"),
+      h("div", { class: "row", style: "gap:8px;margin-bottom:12px" },
+        h("button", { class: "grow", onclick: pickStatement }, "📄 Загрузить выписку"),
+        h("button", { class: "ghost", onclick: () => openTxForm(null, S.txFilter === "income" ? "income" : "expense") }, "+ Вручную")),
+      unc > 0 && h("div", { class: "card tap", style: "border-color:#f0d9a8;background:#fffaf0", onclick: openUncatSheet },
+        h("div", { class: "row" }, h("div", { class: "ico" }, "❓"),
+          h("div", { class: "grow" }, h("b", {}, `${unc} ${plural(unc, "операция", "операции", "операций")} без категории`), h("div", { class: "muted small-text" }, "Укажите, куда потратили — это займёт минуту")),
+          h("span", { class: "muted small-text" }, "Разобрать →"))),
       h("div", { class: "kpis" },
         h("div", { class: "kpi" }, h("div", { class: "muted small-text" }, "Сегодня"), h("div", { class: "v num neg" }, fmtMoney(sumIn(t0, t0, "expense"), base, 0))),
         h("div", { class: "kpi" }, h("div", { class: "muted small-text" }, "Эта неделя"), h("div", { class: "v num neg" }, fmtMoney(sumIn(wk.from, wk.to, "expense"), base, 0))),
@@ -1708,7 +2312,13 @@ async function start() {
       const bits = [];
       if (a.category === "animals") { if (a.kind) bits.push(a.kind); if (a.count) bits.push(`${fmtNum(a.count)} гол.`); if (a.unitValue) bits.push(`по ${fmtMoney(a.unitValue, a.currency)}`); }
       if (a.category === "realty") { if (a.area) bits.push(`${fmtNum(a.area)} м²`); if (a.rooms) bits.push(`${a.rooms}-комн.`); if (a.address) bits.push(a.address); }
-      if (a.category === "securities") { if (a.secType) bits.push(SEC_TYPES[a.secType] || ""); if (a.ticker) bits.push(a.ticker); if (a.qty) bits.push(`${fmtNum(a.qty)} шт.`); if (a.price) bits.push(`по ${fmtMoney(a.price, a.currency)}`); if (a.broker) bits.push(a.broker); }
+      if (a.category === "securities") {
+        const lp = livePrice(a);
+        if (a.secType) bits.push(SEC_TYPES[a.secType] || ""); if (a.ticker) bits.push(a.ticker); if (a.qty) bits.push(`${fmtNum(a.qty)} шт.`);
+        if (lp) bits.push(`📈 ${fmtMoney(lp.price, lp.currency)} (${lp.market === "KASE" ? "KASE" : "биржа"}, ${fmtDay(lp.date)})`);
+        else { if (a.price) bits.push(`по ${fmtMoney(a.price, a.currency)}`); if (secMarket(a)) bits.push("⏳ цена с биржи появится после обновления"); }
+        if (a.broker) bits.push(a.broker);
+      }
       if (a.category === "land" && a.address) bits.push(a.address);
       if (a.category === "car" && a.plate) bits.push(a.plate);
       if (a.category === "receivable") { if (a.debtor) bits.push(a.debtor); if (a.dueDate) bits.push("до " + fmtDay(a.dueDate)); }
