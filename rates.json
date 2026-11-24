@@ -1,7 +1,7 @@
 {
   "source": "KASE",
   "note": "Средневзвешенные курсы биржевых торгов KASE; цены бумаг — KASE и Yahoo Finance",
-  "updated": "2026-11-23T23:06:10.432Z",
+  "updated": "2026-11-24T01:37:00.826Z",
   "kzt": {
     "USD": {
       "rate": 455.09,
@@ -108,6 +108,11 @@
     "KASE:MMGZp": {
       "price": 5911,
       "currency": "KZT",
+      "date": "2026-11-23"
+    },
+    "YAHOO:AAPL": {
+      "price": 349.08,
+      "currency": "USD",
       "date": "2026-11-23"
     }
   }
