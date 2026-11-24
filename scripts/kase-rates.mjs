@@ -32,8 +32,14 @@ async function listTickers() {
     const j = await r.json();
     for (const d of j.documents || []) {
       const f = d.fields || {};
-      const sym = f.symbol && f.symbol.stringValue, m = f.market && f.market.stringValue;
-      if (sym && RX_SYM.test(sym) && (m === "KASE" || m === "YAHOO")) out.push({ sym, m });
+      let sym = f.symbol && f.symbol.stringValue, m = f.market && f.market.stringValue;
+      if (!sym || !RX_SYM.test(sym) || (m !== "KASE" && m !== "YAHOO")) continue;
+      // тикеры в формате брокера: IBIT.US — мировые биржи, GDX_KZ.KZ — KASE
+      const mm = sym.match(/^(.+)\.(US|KZ)$/i);
+      if (mm) { sym = mm[1]; m = mm[2].toUpperCase() === "US" ? "YAHOO" : "KASE"; }
+      sym = sym.toUpperCase();
+      if (m === "KASE" && /^[A-Z]{4}P$/.test(sym)) sym = sym.slice(0, 4) + "p";
+      out.push({ sym, m });
     }
     if (!j.nextPageToken) break;
     token = j.nextPageToken;
@@ -47,7 +53,8 @@ async function kasePrice(sym) {
   const j = await r.json();
   if (j.s !== "ok" || !j.c || !j.c.length) return null;
   const i = j.c.length - 1;
-  return j.c[i] > 0 ? { price: j.c[i], currency: "KZT", date: day(j.t[i]) } : null;
+  // бумаги KASE Global (AAPL_KZ, GDX_KZ) торгуются в долларах
+  return j.c[i] > 0 ? { price: j.c[i], currency: /_KZ$/.test(sym) ? "USD" : "KZT", date: day(j.t[i]) } : null;
 }
 async function yahooPrice(sym) {
   for (const host of ["query1", "query2"]) {
