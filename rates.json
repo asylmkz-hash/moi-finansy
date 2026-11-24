@@ -1,7 +1,7 @@
 {
   "source": "KASE",
   "note": "Средневзвешенные курсы биржевых торгов KASE; цены бумаг — KASE и Yahoo Finance",
-  "updated": "2026-11-24T13:34:23.592Z",
+  "updated": "2026-11-24T15:41:14.626Z",
   "kzt": {
     "USD": {
       "rate": 459.43,
@@ -111,9 +111,9 @@
       "date": "2026-11-24"
     },
     "YAHOO:AAPL": {
-      "price": 349.08,
+      "price": 351.625,
       "currency": "USD",
-      "date": "2026-11-23"
+      "date": "2026-11-24"
     },
     "KASE:GDX_KZ": {
       "price": 72.3,
@@ -121,24 +121,24 @@
       "date": "2026-11-24"
     },
     "YAHOO:IBIT": {
-      "price": 34.62,
+      "price": 33.825,
       "currency": "USD",
-      "date": "2026-11-23"
+      "date": "2026-11-24"
     },
     "YAHOO:SLV": {
-      "price": 38.91,
+      "price": 37.31,
       "currency": "USD",
-      "date": "2026-11-23"
+      "date": "2026-11-24"
     },
     "YAHOO:SPUS": {
-      "price": 54.78,
+      "price": 53.866,
       "currency": "USD",
-      "date": "2026-11-23"
+      "date": "2026-11-24"
     },
     "YAHOO:URA": {
-      "price": 28.37,
+      "price": 27.394,
       "currency": "USD",
-      "date": "2026-11-23"
+      "date": "2026-11-24"
     }
   }
 }
