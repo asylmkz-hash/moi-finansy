@@ -221,7 +221,7 @@ const F_ASSET = [
   { key: "count", label: "Количество, голов", type: "number", show: (d) => d.category === "animals", half: true },
   { key: "unitValue", label: "Цена за голову", type: "number", show: (d) => d.category === "animals", half: true },
   { key: "secType", label: "Вид бумаг", type: "select", options: SEC_TYPES, show: (d) => d.category === "securities" },
-  { key: "market", label: "Цена обновляется", type: "select", options: MARKETS, show: (d) => d.category === "securities", hintBy: { securities: "Цена 1 шт. берётся с биржи, и стоимость меняется сама. Тикер для мировых бирж — как на Yahoo Finance: AAPL, BRK-B, HSBA.L. Облигации не обновляются." } },
+  { key: "market", label: "Цена обновляется", type: "select", options: MARKETS, show: (d) => d.category === "securities", hintBy: { securities: "Цена 1 шт. берётся с биржи, и стоимость меняется сама. Тикер можно писать как у брокера: KSPI, IBIT.US, GDX_KZ.KZ, AAPL, HSBA.L. Облигации не обновляются." } },
   { key: "ticker", label: "Тикер", type: "text", placeholder: "KSPI, HSBK, AAPL…", show: (d) => d.category === "securities", half: true },
   { key: "broker", label: "Брокер", type: "text", placeholder: "Freedom, Halyk Invest…", show: (d) => d.category === "securities", half: true },
   { key: "qty", label: "Количество, шт.", type: "number", show: (d) => d.category === "securities", half: true },
@@ -748,15 +748,26 @@ async function fileRows(file, askPassword) {
 }
 
 // ---------- цены ценных бумаг (rates.json → prices) ----------
+// тикер в формате брокера: IBIT.US — мировые биржи, GDX_KZ.KZ — KASE
+function tickerParts(t) {
+  let s = String(t || "").trim().replace(/\s+/g, "");
+  let forced = null;
+  const m = s.match(/^(.+)\.(US|KZ)$/i);
+  if (m) { s = m[1]; forced = m[2].toUpperCase() === "US" ? "YAHOO" : "KASE"; }
+  else if (/_KZ$/i.test(s)) forced = "KASE";
+  return { s, forced };
+}
 function secMarket(a) {
   if (!a || a.category !== "securities" || !a.ticker || a.market === "none" || a.secType === "bond") return null;
   if (a.market === "kase") return "KASE";
   if (a.market === "world") return "YAHOO";
+  const f = tickerParts(a.ticker).forced;
+  if (f) return f;
   return (a.currency || "KZT") === "KZT" ? "KASE" : "YAHOO";
 }
 // KASE различает регистр: привилегированные акции — KZTKp
 function normTicker(t, m) {
-  let s = String(t || "").trim().replace(/\s+/g, "");
+  let s = tickerParts(t).s;
   if (m === "KASE") { s = s.toUpperCase(); if (/^[A-Z]{4}P$/.test(s)) s = s.slice(0, 4) + "p"; }
   else s = s.toUpperCase();
   return /^[A-Za-z0-9.\-=^_]{1,20}$/.test(s) ? s : "";
