@@ -1,31 +1,31 @@
 {
   "source": "KASE",
   "note": "Средневзвешенные курсы биржевых торгов KASE; цены бумаг — KASE и Yahoo Finance",
-  "updated": "2026-11-25T23:02:07.531Z",
+  "updated": "2026-11-26T12:17:19.546Z",
   "kzt": {
     "USD": {
-      "rate": 458.37,
-      "date": "2026-11-25",
+      "rate": 458.12,
+      "date": "2026-11-26",
       "symbol": "USDKZT_TOM",
-      "kind": "weighted"
+      "kind": "close"
     },
     "EUR": {
-      "rate": 501.64,
-      "date": "2026-11-25",
+      "rate": 502.69,
+      "date": "2026-11-26",
       "symbol": "EURKZT_TOM",
-      "kind": "weighted"
+      "kind": "close"
     },
     "RUB": {
-      "rate": 5.5686,
-      "date": "2026-11-25",
+      "rate": 5.58,
+      "date": "2026-11-26",
       "symbol": "RUBKZT_TOM",
-      "kind": "weighted"
+      "kind": "close"
     },
     "CNY": {
-      "rate": 68.6742,
-      "date": "2026-11-25",
+      "rate": 68.7453,
+      "date": "2026-11-26",
       "symbol": "CNYKZT_TOM",
-      "kind": "weighted"
+      "kind": "close"
     },
     "AED": {
       "rate": 125.57,
@@ -36,79 +36,79 @@
   },
   "prices": {
     "KASE:KSPI": {
-      "price": 40000,
+      "price": 40300.09,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:HSBK": {
-      "price": 370.5,
+      "price": 371,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KCEL": {
-      "price": 3194.9,
+      "price": 3180,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KZTO": {
-      "price": 1363.97,
+      "price": 1365.99,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KEGC": {
-      "price": 1497.99,
+      "price": 1518.99,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KZAP": {
-      "price": 24600,
+      "price": 24994,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KMGZ": {
-      "price": 36000.01,
+      "price": 36000,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:CCBN": {
-      "price": 5461.01,
+      "price": 5480,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:AIRA": {
-      "price": 698.56,
+      "price": 708,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KZTK": {
-      "price": 44600,
+      "price": 44708.12,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:KZTKp": {
-      "price": 26095,
+      "price": 26600,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:BAST": {
-      "price": 3240,
+      "price": 3185,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:RAHT": {
-      "price": 17800,
+      "price": 17796,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:BSUL": {
-      "price": 441.51,
+      "price": 441.5,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "KASE:MMGZp": {
-      "price": 6066.01,
+      "price": 6184,
       "currency": "KZT",
-      "date": "2026-11-25"
+      "date": "2026-11-26"
     },
     "YAHOO:AAPL": {
       "price": 355.58,
