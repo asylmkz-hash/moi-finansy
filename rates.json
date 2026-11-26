@@ -1,31 +1,31 @@
 {
   "source": "KASE",
   "note": "Средневзвешенные курсы биржевых торгов KASE; цены бумаг — KASE и Yahoo Finance",
-  "updated": "2026-11-26T12:17:19.546Z",
+  "updated": "2026-11-26T14:56:22.212Z",
   "kzt": {
     "USD": {
-      "rate": 458.12,
+      "rate": 458.74,
       "date": "2026-11-26",
       "symbol": "USDKZT_TOM",
-      "kind": "close"
+      "kind": "weighted"
     },
     "EUR": {
-      "rate": 502.69,
+      "rate": 502.62,
       "date": "2026-11-26",
       "symbol": "EURKZT_TOM",
-      "kind": "close"
+      "kind": "weighted"
     },
     "RUB": {
-      "rate": 5.58,
+      "rate": 5.5834,
       "date": "2026-11-26",
       "symbol": "RUBKZT_TOM",
-      "kind": "close"
+      "kind": "weighted"
     },
     "CNY": {
-      "rate": 68.7453,
+      "rate": 68.7826,
       "date": "2026-11-26",
       "symbol": "CNYKZT_TOM",
-      "kind": "close"
+      "kind": "weighted"
     },
     "AED": {
       "rate": 125.57,
@@ -46,7 +46,7 @@
       "date": "2026-11-26"
     },
     "KASE:KCEL": {
-      "price": 3180,
+      "price": 3195.9,
       "currency": "KZT",
       "date": "2026-11-26"
     },
@@ -56,7 +56,7 @@
       "date": "2026-11-26"
     },
     "KASE:KEGC": {
-      "price": 1518.99,
+      "price": 1520,
       "currency": "KZT",
       "date": "2026-11-26"
     },
@@ -76,7 +76,7 @@
       "date": "2026-11-26"
     },
     "KASE:AIRA": {
-      "price": 708,
+      "price": 710,
       "currency": "KZT",
       "date": "2026-11-26"
     },
