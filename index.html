@@ -161,6 +161,7 @@
   nav button { padding: 8px 2px 10px; }
   button.small { padding: 9px 14px; }
   html.big body { zoom: 1.15; }
+  .tile .e.letter { width: 30px; height: 30px; border-radius: 50%; background: var(--brand-2); color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
@@ -203,6 +204,16 @@ const ICONS = {
   "Красота и уход": "💇", "Дом и ремонт": "🔨", "Животные": "🐎", "Кредиты и проценты": "🏦", "Налоги и сборы": "🧾", "Садака и помощь": "🤲",
   "Зарплата": "💼", "Бизнес": "📈", "Аренда": "🔑", "Продажа": "🤝", "Проценты и дивиденды": "💹", "Возврат долга": "↩️", "Перевод": "🔁", "Без категории": "❓", "Другое": "•"
 };
+// значки для своих категорий по смыслу названия
+const ICON_RULES = [[/такси|taxi/i, "🚕"], [/родител|мама|папа|\bана\b|әке/i, "👪"], [/жена|муж|сын|доч|брат|сестр|бала|ребен|ребён/i, "❤️"], [/друз|дос/i, "🧑‍🤝‍🧑"],
+  [/кальян/i, "💨"], [/бата|садака|мечет|зекет/i, "🤲"], [/көріндік|кәде|той|подар|сүйінші/i, "🎁"], [/кофе|coffee/i, "☕"], [/спорт|фитнес|трениров/i, "🏋️"],
+  [/бензин|азс|топлив/i, "⛽"], [/ремонт|строй/i, "🔨"], [/аренд/i, "🔑"], [/школ|учеб|курс|репетит/i, "📚"], [/телефон|связь|интернет/i, "📱"], [/одежд|обув/i, "👕"],
+  [/лекар|аптек|врач|клиник/i, "💊"], [/игр|game/i, "🎮"], [/сладк|конфет|морожен/i, "🍬"], [/еда|обед|ужин|завтрак/i, "🍽️"], [/кредит|долг|займ/i, "🏦"], [/налог|штраф/i, "🧾"]];
+function catIcon(c) {
+  if (ICONS[c]) return ICONS[c];
+  for (const [rx, e] of ICON_RULES) if (rx.test(c || "")) return e;
+  return null;
+}
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const MONTHS_G = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const MONTHS_S = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
@@ -1224,7 +1235,7 @@ async function start() {
         if (d.category && !customCat && !shown.includes(d.category) && order.includes(d.category)) shown = [...shown.slice(0, 10), d.category];
         const tiles = h("div", { class: "tiles" },
           shown.map((c) => h("button", { type: "button", class: "tile" + (!customCat && d.category === c ? " on" : ""), onclick: redraw(() => { d.category = c; customCat = false; }) },
-            h("span", { class: "e" }, ICONS[c] || "🏷️"), h("span", {}, c))),
+            catIcon(c) ? h("span", { class: "e" }, catIcon(c)) : h("span", { class: "e letter" }, (c || "?").trim().charAt(0).toUpperCase()), h("span", {}, c))),
           !showAll && order.length > 11 && h("button", { type: "button", class: "tile", onclick: redraw(() => { showAll = true; }) }, h("span", { class: "e" }, "⋯"), h("span", {}, "Ещё")),
           (showAll || order.length <= 11) && h("button", { type: "button", class: "tile" + (customCat ? " on" : ""), onclick: () => { read(); customCat = true; d.category = ""; draw(); setTimeout(() => el.newCat && el.newCat.focus(), 30); } },
             h("span", { class: "e" }, "＋"), h("span", {}, "Своя")));
@@ -1309,7 +1320,7 @@ async function start() {
     const rows = catList("expense").filter((c) => c !== "Перевод").map((c) => {
       const inp = h("input", { type: "text", inputmode: "decimal", placeholder: "без лимита", value: limits[c] ? String(limits[c]) : "", style: "padding:9px" });
       inputs[c] = inp;
-      return h("div", { class: "row", style: "margin-top:8px" }, h("div", { class: "ico" }, ICONS[c] || "•"), h("div", { class: "grow" }, c), h("div", { style: "width:130px" }, inp));
+      return h("div", { class: "row", style: "margin-top:8px" }, h("div", { class: "ico" }, catIcon(c) || "•"), h("div", { class: "grow" }, c), h("div", { style: "width:130px" }, inp));
     });
     async function submit(ev) {
       ev.preventDefault();
@@ -1572,7 +1583,7 @@ async function start() {
     function catSelect(r) {
       const sel = h("select", { class: r.cat ? "" : "unc" }, [
         h("option", { value: "" }, "❓ Без категории — заполню позже"),
-        ...catList(r.type).map((c) => h("option", { value: c, selected: c === r.cat }, `${ICONS[c] || "•"} ${c}`)),
+        ...catList(r.type).map((c) => h("option", { value: c, selected: c === r.cat }, `${catIcon(c) || "•"} ${c}`)),
         h("option", { value: "__flip" }, r.type === "expense" ? "⇄ Это доход, а не расход" : "⇄ Это расход, а не доход"),
         h("option", { value: "__skip" }, "✕ Не загружать (перевод между своими счетами и т.п.)")]);
       sel.addEventListener("change", () => {
@@ -1681,7 +1692,7 @@ async function start() {
         ...list.map((t) => {
           const cur = done[t.id];
           const sel = !cur && h("select", { class: "unc" }, [h("option", { value: "" }, "❓ Выберите категорию"),
-            ...catList(t.type).map((c) => h("option", { value: c }, `${ICONS[c] || "•"} ${c}`)),
+            ...catList(t.type).map((c) => h("option", { value: c }, `${catIcon(c) || "•"} ${c}`)),
             h("option", { value: "__flip" }, t.type === "expense" ? "⇄ Это доход, а не расход" : "⇄ Это расход, а не доход"),
             h("option", { value: "__del" }, "🗑 Удалить операцию")]);
           if (sel) sel.addEventListener("change", async () => { if (!sel.value) return; sel.disabled = true; try { await setCat(t, sel.value); } catch (e) { alert(errText(e)); } draw(); });
@@ -2122,7 +2133,7 @@ async function start() {
       const prev = prevMap && prevMap[c];
       const barCls = lim ? (v > lim ? "bar over" : v > lim * 0.85 ? "bar warn" : "bar") : "bar";
       return h("div", { class: "item" },
-        h("div", { class: "row" }, h("div", { class: "ico" }, ICONS[c] || "•"),
+        h("div", { class: "row" }, h("div", { class: "ico" }, catIcon(c) || "•"),
           h("div", { class: "grow" },
             h("div", { class: "row" }, h("div", { class: "grow ellipsis" }, c), h("b", { class: "num" }, fmtMoney(v, base, 0))),
             h("div", { class: "row muted small-text" },
@@ -2138,7 +2149,7 @@ async function start() {
     const sub = t.type === "transfer" ? `${accName(t.accountId) || "?"} → ${accName(t.toAccountId) || "?"}` : [t.note, accName(t.accountId)].filter(Boolean).join(" · ");
     const conv = t.currency !== base ? toBase(t.amount, t.currency) : null;
     return h("div", { class: "item tap", onclick: () => openTxForm(t) },
-      h("div", { class: "row" }, h("div", { class: "ico" }, ICONS[t.category] || (t.type === "transfer" ? "🔁" : t.category ? "•" : "❓")),
+      h("div", { class: "row" }, h("div", { class: "ico" }, catIcon(t.category) || (t.type === "transfer" ? "🔁" : t.category ? "•" : "❓")),
         h("div", { class: "grow" }, t.category || t.type === "transfer" ? h("div", { class: "ellipsis", style: "font-weight:600" }, t.category || TX_TYPES[t.type]) : h("div", { class: "ellipsis unc-tag", style: "font-weight:600" }, "❓ Без категории"), sub && h("div", { class: "muted small-text ellipsis" }, sub)),
         h("div", { class: "amt" }, h("div", { class: "num " + cls }, sign + fmtMoney(t.amount, t.currency)), conv != null && h("div", { class: "muted small-text num" }, "≈ " + fmtMoney(conv, base, 0)))));
   }
@@ -2174,7 +2185,7 @@ async function start() {
         h("div", { class: "grow" }, h("div", { class: "muted small-text" }, "Расходы"), h("b", { class: "num neg" }, fmtMoney(exp, base, 0))),
         h("div", { class: "grow" }, h("div", { class: "muted small-text" }, "Остаток"), h("b", { class: "num" }, fmtMoney(inc - exp, base, 0)))),
       h("div", { class: "muted small-text", style: "margin-top:8px" }, `Сегодня потрачено: ${fmtMoney(todayExp, base, 0)}`),
-      top.length > 0 && h("div", { style: "margin-top:6px" }, top.map(([c, v]) => h("div", { class: "row small-text", style: "margin-top:4px" }, h("span", {}, ICONS[c] || "•"), h("div", { class: "grow" }, c), h("span", { class: "num" }, fmtMoney(v, base, 0))))),
+      top.length > 0 && h("div", { style: "margin-top:6px" }, top.map(([c, v]) => h("div", { class: "row small-text", style: "margin-top:4px" }, h("span", {}, catIcon(c) || "•"), h("div", { class: "grow" }, c), h("span", { class: "num" }, fmtMoney(v, base, 0))))),
       !list.length && h("div", { class: "muted small-text", style: "margin-top:6px" }, "Пока нет операций за этот месяц. Нажмите «➖ Расход» или «➕ Доход» вверху."));
   }
 
@@ -2297,7 +2308,7 @@ async function start() {
         expCats.length ? catRows(expCats, exp, prevExpMap, R.kind === "month" ? (S.budget && S.budget.limits) : null) : h("div", { class: "empty" }, "Расходов за этот период нет")),
       growth.length > 0 && h("div", { class: "card" },
         h("div", { class: "card-head" }, h("h2", {}, "Выросли больше всего")),
-        growth.map(([c, v]) => h("div", { class: "row small-text", style: "margin-top:6px" }, h("span", {}, ICONS[c] || "•"), h("div", { class: "grow" }, c), h("span", { class: "num neg" }, "+" + fmtMoney(v, base, 0))))),
+        growth.map(([c, v]) => h("div", { class: "row small-text", style: "margin-top:6px" }, h("span", {}, catIcon(c) || "•"), h("div", { class: "grow" }, c), h("span", { class: "num neg" }, "+" + fmtMoney(v, base, 0))))),
       biggest.length > 0 && h("div", { class: "card" },
         h("div", { class: "card-head" }, h("h2", {}, "Самые крупные расходы")), biggest.map((x) => txRow(x.t))),
       h("div", { class: "card" },
